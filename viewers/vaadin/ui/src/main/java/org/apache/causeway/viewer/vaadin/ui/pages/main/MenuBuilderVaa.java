@@ -91,13 +91,15 @@ public class MenuBuilderVaa implements MenuVisitor {
 
     @Override
     public void onSectionSpacer() {
-        currentSubMenu.add(new Hr());
+        var spacerItem = currentSubMenu.addItem(new Hr());
+        spacerItem.setEnabled(false);
     }
 
     @Override
     public void onSectionLabel(final String named) {
         var label = new Span(named);
         label.getStyle().set("font-weight", "bold");
-        currentSubMenu.add(label);
+        var labelItem = currentSubMenu.addItem(label);
+        labelItem.setEnabled(false);
     }
 }
