@@ -27,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import org.apache.causeway.applib.services.iactn.InteractionService;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.security.authentication.AuthenticationRequest;
 import org.apache.causeway.viewer.vaadin.ui.pages.login.VaadinLoginView;
@@ -36,6 +35,10 @@ import org.apache.causeway.viewer.vaadin.ui.pages.login.VaadinLoginView;
  * Route guard: every navigation requires an authenticated session, otherwise
  * reroutes to the login view. Also offers the login entry point used by
  * {@link VaadinLoginView}.
+ * <p>
+ * Sole responsibility of the guard: reroute unauthenticated navigation to the
+ * login view. The per-request Interaction lifecycle is owned by the servlet
+ * wrapper, not by this guard.
  */
 @Component
 public class VaadinAuthenticationHandler
@@ -44,13 +47,10 @@ public class VaadinAuthenticationHandler
     private static final long serialVersionUID = 1L;
     private static final Logger log = LoggerFactory.getLogger(VaadinAuthenticationHandler.class);
 
-    private final transient InteractionService interactionService;
     private final transient MetaModelContext metaModelContext;
 
     public VaadinAuthenticationHandler(
-            final InteractionService interactionService,
             final MetaModelContext metaModelContext) {
-        this.interactionService = interactionService;
         this.metaModelContext = metaModelContext;
     }
 
@@ -62,22 +62,24 @@ public class VaadinAuthenticationHandler
 
     /** @return whether authentication succeeded */
     public boolean loginToSession(final AuthenticationRequest authenticationRequest) {
-        var authentication = metaModelContext.getAuthenticationManager()
-                .authenticate(authenticationRequest);
-        if (authentication == null) {
+        try {
+            var authentication = metaModelContext.getAuthenticationManager()
+                    .authenticate(authenticationRequest);
+            if (authentication == null) {
+                return false;
+            }
+            log.debug("logging in {}", authentication.getUser().name());
+            AuthSessionStoreUtil.put(authentication);
+            return true;
+        } catch (Exception e) {
+            log.error("authentication failed with an unexpected error", e);
             return false;
         }
-        log.debug("logging in {}", authentication.getUser().name());
-        AuthSessionStoreUtil.put(authentication);
-        return true;
     }
 
     private void beforeEnter(final BeforeEnterEvent event) {
         var authentication = AuthSessionStoreUtil.get().orElse(null);
         if (authentication != null) {
-            if (!interactionService.isInInteraction()) {
-                interactionService.openInteraction(authentication);
-            }
             return; // access granted
         }
         if (!VaadinLoginView.class.equals(event.getNavigationTarget())) {
