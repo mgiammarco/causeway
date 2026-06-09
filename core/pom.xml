@@ -74,6 +74,7 @@
         <module>../viewers/restfulobjects</module>
         <module>../viewers/wicket</module>
         <module>../viewers/graphql</module>
+        <module>../viewers/vaadin</module>
 
         <module>../persistence/commons</module>
         <module>../persistence/jdbc</module>

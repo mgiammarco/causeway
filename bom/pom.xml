@@ -593,6 +593,35 @@ identified
                 <scope>compile</scope>
             </dependency>
 
+            <dependency>
+                <groupId>org.apache.causeway.viewer</groupId>
+                <artifactId>causeway-viewer-vaadin</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>compile</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.causeway.viewer</groupId>
+                <artifactId>causeway-viewer-vaadin-model</artifactId>
+                <version>${project.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.causeway.viewer</groupId>
+                <artifactId>causeway-viewer-vaadin-ui</artifactId>
+                <version>${project.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.causeway.viewer</groupId>
+                <artifactId>causeway-viewer-vaadin-viewer</artifactId>
+                <version>${project.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
 
             <!-- org.apache.causeway.testing -->
 
