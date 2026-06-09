@@ -30,8 +30,7 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.FlexLayout;
 import com.vaadin.flow.component.orderedlayout.FlexLayout.FlexWrap;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.tabs.Tab;
-import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.component.tabs.TabSheet;
 
 import org.apache.causeway.applib.annotation.Where;
 import org.apache.causeway.applib.layout.component.ActionLayoutData;
@@ -81,7 +80,7 @@ public class ObjectViewVaa extends VerticalLayout {
 
         var objectTitle = MmTitleUtils.titleOf(managedObject);
 
-        var gridVisitor = new UiGridLayout.Visitor<HasComponents, Tabs>(this) {
+        var gridVisitor = new UiGridLayout.Visitor<HasComponents, TabSheet>(this) {
 
             @Override
             protected void onObjectTitle(final HasComponents container, final DomainObjectLayoutData domainObjectData) {
@@ -116,17 +115,19 @@ public class ObjectViewVaa extends VerticalLayout {
             }
 
             @Override
-            protected Tabs newTabGroup(final HasComponents container, final BSTabGroup tabGroupData) {
-                var uiTabGroup = Vaa.add(container, new Tabs());
-                uiTabGroup.setOrientation(Tabs.Orientation.HORIZONTAL);
-                return uiTabGroup;
+            protected TabSheet newTabGroup(final HasComponents container, final BSTabGroup tabGroupData) {
+                var tabSheet = new TabSheet();
+                container.add(tabSheet);
+                tabSheet.setWidthFull();
+                return tabSheet;
             }
 
             @Override
-            protected HasComponents newTab(final Tabs tabGroup, final BSTab tabData) {
-                var uiTab = new Tab(tabData.getName());
-                tabGroup.add(uiTab);
-                return uiTab;
+            protected HasComponents newTab(final TabSheet tabSheet, final BSTab tabData) {
+                var tabContent = new VerticalLayout();
+                tabContent.setWidthFull();
+                tabSheet.add(tabData.getName(), tabContent);
+                return tabContent;
             }
 
             @Override
