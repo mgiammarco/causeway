@@ -33,6 +33,7 @@ import org.apache.causeway.viewer.commons.model.components.UiComponentFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.other.FallbackFieldFactory;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UiComponentFactoryVaaTest {
 
@@ -99,6 +100,6 @@ class UiComponentFactoryVaaTest {
         // ComponentRequest with null feature: isHandling() must return true regardless
         var request = new UiComponentFactory.ComponentRequest(
                 Mockito.mock(ManagedValue.class), null, Optional.empty());
-        assert handler.isHandling(request);
+        assertTrue(handler.isHandling(request));
     }
 }
