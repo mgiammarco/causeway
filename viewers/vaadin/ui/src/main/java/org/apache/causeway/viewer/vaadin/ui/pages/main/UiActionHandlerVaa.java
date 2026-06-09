@@ -21,6 +21,8 @@ package org.apache.causeway.viewer.vaadin.ui.pages.main;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.vaadin.flow.spring.annotation.UIScope;
+
 import org.springframework.stereotype.Service;
 
 import org.apache.causeway.commons.collections.Can;
@@ -35,6 +37,7 @@ import org.apache.causeway.viewer.vaadin.ui.components.action.ActionDialog;
  * otherwise an {@link ActionDialog} collects parameters first. The action
  * result is routed to the current page via {@link UiContextVaa}.
  */
+@UIScope
 @Service
 public class UiActionHandlerVaa {
 

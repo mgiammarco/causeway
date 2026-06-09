@@ -18,9 +18,11 @@
  */
 package org.apache.causeway.viewer.vaadin.ui.pages.main;
 
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.spring.annotation.UIScope;
 
 import org.springframework.stereotype.Service;
 
@@ -34,7 +36,10 @@ import org.apache.causeway.viewer.vaadin.model.context.UiContextVaa;
 /**
  * Default {@link UiContextVaa}: renders domain artifacts through the
  * registered page factory and hands the result to the registered page handler.
+ * <p>Scoped to the Vaadin UI instance so each browser tab/window gets its own
+ * state; must be used only within a Vaadin UI context.</p>
  */
+@UIScope
 @Service
 public class UiContextVaaDefault implements UiContextVaa {
 
@@ -54,16 +59,17 @@ public class UiContextVaaDefault implements UiContextVaa {
 
     @Override
     public void setNewPageHandler(final Consumer<Component> newPageHandler) {
-        this.newPageHandler = newPageHandler;
+        this.newPageHandler = Objects.requireNonNull(newPageHandler, "newPageHandler");
     }
 
     @Override
     public void setPageFactory(final MemberInvocationHandler<Component> pageFactory) {
-        this.pageFactory = pageFactory;
+        this.pageFactory = Objects.requireNonNull(pageFactory, "pageFactory");
     }
 
     @Override
     public void route(final ManagedObject object) {
+        ensureInitialized();
         newPageHandler.accept(pageFactory.handle(object));
     }
 
@@ -72,6 +78,17 @@ public class UiContextVaaDefault implements UiContextVaa {
             final ManagedAction managedAction,
             final Can<ManagedObject> params,
             final ManagedObject actionResult) {
+        ensureInitialized();
         newPageHandler.accept(pageFactory.handle(managedAction, params, actionResult));
+    }
+
+    // -- HELPER
+
+    private void ensureInitialized() {
+        if (newPageHandler == null || pageFactory == null) {
+            throw new IllegalStateException(
+                    "UiContextVaa not initialized: the application shell must register "
+                    + "newPageHandler and pageFactory before routing");
+        }
     }
 }
