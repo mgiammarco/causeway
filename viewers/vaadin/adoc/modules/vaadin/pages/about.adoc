@@ -1,0 +1,35 @@
+= Vaadin Viewer
+
+WARNING: This viewer is experimental (phase 1). It renders domain objects,
+collections and action prompts using Vaadin Flow, reusing the
+viewer-agnostic models from `causeway-viewer-commons`.
+
+== Enabling
+
+Import `CausewayModuleViewerVaadinViewer` from your application manifest:
+
+[source,java]
+----
+@Configuration
+@Import({
+    CausewayModuleCoreRuntimeServices.class,
+    CausewayModuleViewerVaadinViewer.class,
+    // plus persistence + security modules of your choice
+})
+public class AppManifest { }
+----
+
+NOTE: `vaadin-spring-boot-starter` transitively brings Hilla auto-configurations;
+if your application does not use Hilla, exclude them via
+`spring.autoconfigure.exclude` (see `VaadinModuleContextLoadsTest` for the list).
+
+== Scope (phase 1)
+
+* Login via Causeway's own `AuthenticationManager`
+* Menubar built from the domain-service metamodel
+* Domain-object page driven by the bootstrap grid layout
+* Collections rendered as Vaadin `Grid`
+* Action invocation incl. parameter dialogs (text, date, date-time inputs)
+
+Not yet: blob/clob, markup rendering, bookmarks, hints, themes, i18n,
+lazy-loaded grids, model-to-UI refresh of temporal fields.
