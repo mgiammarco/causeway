@@ -26,7 +26,6 @@ import com.vaadin.flow.spring.annotation.UIScope;
 
 import org.springframework.stereotype.Service;
 
-import org.apache.causeway.applib.services.iactn.InteractionService;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.interactions.managed.ManagedAction;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
@@ -43,19 +42,8 @@ import org.apache.causeway.viewer.vaadin.model.context.UiContextVaa;
 @Service
 public class UiContextVaaDefault implements UiContextVaa {
 
-    private final InteractionService interactionService;
-
     private Consumer<Component> newPageHandler;
     private MemberInvocationHandler<Component> pageFactory;
-
-    public UiContextVaaDefault(final InteractionService interactionService) {
-        this.interactionService = interactionService;
-    }
-
-    @Override
-    public InteractionService getInteractionService() {
-        return interactionService;
-    }
 
     @Override
     public void setNewPageHandler(final Consumer<Component> newPageHandler) {

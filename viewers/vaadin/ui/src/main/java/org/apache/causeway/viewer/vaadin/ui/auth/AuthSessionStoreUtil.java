@@ -62,6 +62,6 @@ public final class AuthSessionStoreUtil {
     public static void clear() {
         Optional.ofNullable(VaadinSession.getCurrent())
                 .map(VaadinSession::getSession)
-                .ifPresent(s -> s.setAttribute(ATTRIBUTE, null));
+                .ifPresent(s -> s.removeAttribute(ATTRIBUTE));
     }
 }

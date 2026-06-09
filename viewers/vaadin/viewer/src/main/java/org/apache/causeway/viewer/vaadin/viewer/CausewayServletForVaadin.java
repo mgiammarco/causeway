@@ -59,7 +59,7 @@ public class CausewayServletForVaadin extends SpringServlet {
             final HttpServletRequest request,
             final HttpServletResponse response) throws ServletException, IOException {
 
-        var authentication = AuthSessionStoreUtil.get(request.getSession(true)).orElse(null);
+        var authentication = AuthSessionStoreUtil.get(request.getSession(false)).orElse(null);
         log.debug("incoming request (authenticated={})", authentication != null);
 
         if (authentication != null) {

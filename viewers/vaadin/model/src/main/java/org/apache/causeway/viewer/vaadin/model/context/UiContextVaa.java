@@ -22,7 +22,6 @@ import java.util.function.Consumer;
 
 import com.vaadin.flow.component.Component;
 
-import org.apache.causeway.applib.services.iactn.InteractionService;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.interactions.managed.ManagedAction;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
@@ -32,8 +31,6 @@ import org.apache.causeway.core.metamodel.object.ManagedObject;
  * and the application shell that swaps page content.
  */
 public interface UiContextVaa {
-
-    InteractionService getInteractionService();
 
     /** Registered by the application shell: receives the new page content. */
     void setNewPageHandler(Consumer<Component> newPageHandler);
