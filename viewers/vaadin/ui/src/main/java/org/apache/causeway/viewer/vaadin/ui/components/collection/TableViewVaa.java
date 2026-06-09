@@ -55,11 +55,13 @@ public class TableViewVaa extends VerticalLayout {
         add(grid);
 
         grid.addColumn(row -> MmTitleUtils.titleOf(row.rowElement()))
-                .setHeader(dataTable.titleObservable().getValue());
+                .setHeader("");
 
         dataTable.dataColumnsObservable().getValue().forEach(column ->
                 grid.addColumn(row -> stringifyCell(row, column))
                         .setHeader(column.columnFriendlyNameObservable().getValue()));
+
+        grid.getColumns().forEach(column -> column.setAutoWidth(true));
 
         grid.setItems(rows.toList());
         grid.setColumnReorderingAllowed(true);
