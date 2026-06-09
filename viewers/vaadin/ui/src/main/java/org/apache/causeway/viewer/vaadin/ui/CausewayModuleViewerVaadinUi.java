@@ -27,6 +27,8 @@ import org.apache.causeway.viewer.vaadin.ui.components.UiComponentFactoryVaa;
 import org.apache.causeway.viewer.vaadin.ui.components.other.FallbackFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.temporal.TemporalFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.text.TextFieldFactory;
+import org.apache.causeway.viewer.vaadin.ui.pages.main.UiActionHandlerVaa;
+import org.apache.causeway.viewer.vaadin.ui.pages.main.UiContextVaaDefault;
 
 @Configuration
 @Import({
@@ -39,6 +41,8 @@ import org.apache.causeway.viewer.vaadin.ui.components.text.TextFieldFactory;
         FallbackFieldFactory.class,
         TemporalFieldFactory.class,
         TextFieldFactory.class,
+        UiContextVaaDefault.class,
+        UiActionHandlerVaa.class,
 })
 public class CausewayModuleViewerVaadinUi {
 }
