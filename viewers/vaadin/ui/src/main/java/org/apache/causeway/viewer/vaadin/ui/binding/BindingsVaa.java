@@ -25,6 +25,7 @@ import com.vaadin.flow.component.HasValidation;
 import com.vaadin.flow.component.HasValue;
 
 import org.apache.causeway.commons.binding.Bindable;
+import org.apache.causeway.commons.binding.ChangeListener;
 import org.apache.causeway.commons.binding.Observable;
 import org.apache.causeway.core.metamodel.interactions.managed.ManagedValue;
 
@@ -69,15 +70,51 @@ public final class BindingsVaa {
 
         // UI -> model
         uiField.addValueChangeListener(event -> parsableText.setValue(event.getValue()));
-        // model -> UI
-        parsableText.addListener((observable, oldValue, newValue) ->
-                uiField.setValue(Objects.toString(newValue, "")));
 
+        // model -> UI (reentrancy guard: skip set when value is already current)
+        ChangeListener<String> modelListener = (observable, oldValue, newValue) -> {
+            var next = Objects.toString(newValue, "");
+            if (!next.equals(uiField.getValue())) {
+                uiField.setValue(next);
+            }
+        };
+        parsableText.addListener(modelListener);
+
+        // validation feedback + listener leak fix
+        ChangeListener<String> validationListener;
         if (uiField instanceof HasValidation hasValidation) {
-            validationMessage.addListener((observable, oldValue, newValue) -> {
+            validationListener = (observable, oldValue, newValue) -> {
                 hasValidation.setErrorMessage(newValue);
                 hasValidation.setInvalid(newValue != null && !newValue.isBlank());
-            });
+            };
+            validationMessage.addListener(validationListener);
+        } else {
+            validationListener = null;
+        }
+
+        // detach cleanup: remove model listeners when the field leaves the UI
+        final ChangeListener<String> capturedValidationListener = validationListener;
+        uiField.addDetachListener(event ->
+                unbind(parsableText, validationMessage, modelListener, capturedValidationListener));
+    }
+
+    /**
+     * Removes the given listeners from their respective observables.
+     * Package-private for testing.
+     *
+     * @param parsableText        the model observable for the field value
+     * @param validationMessage   the model observable for validation feedback
+     * @param modelListener       listener registered on {@code parsableText}
+     * @param validationListener  listener registered on {@code validationMessage}, or {@code null}
+     */
+    static void unbind(
+            final Observable<String> parsableText,
+            final Observable<String> validationMessage,
+            final ChangeListener<String> modelListener,
+            final ChangeListener<String> validationListener) {
+        parsableText.removeListener(modelListener);
+        if (validationListener != null) {
+            validationMessage.removeListener(validationListener);
         }
     }
 }

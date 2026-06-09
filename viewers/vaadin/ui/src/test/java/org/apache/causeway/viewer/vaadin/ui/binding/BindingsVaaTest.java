@@ -73,6 +73,33 @@ class BindingsVaaTest {
 
     @SuppressWarnings("unchecked")
     @Test
+    void bindParsableText_detach_removesModelListeners() {
+        // Verifies the detach-cleanup path by calling unbind() directly,
+        // which is exactly what the addDetachListener lambda invokes.
+        // This avoids requiring a VaadinSession/UI in a plain JVM unit test.
+        var parsableText = (Bindable<String>) Mockito.mock(Bindable.class);
+        var validationMessage = (Observable<String>) Mockito.mock(Observable.class);
+        Mockito.when(parsableText.getValue()).thenReturn("v");
+
+        var field = new TextField("Name");
+        BindingsVaa.bindParsableText(field, parsableText, validationMessage, false);
+
+        // capture the listeners that were registered
+        var modelCaptor = ArgumentCaptor.forClass(ChangeListener.class);
+        Mockito.verify(parsableText).addListener(modelCaptor.capture());
+        var validationCaptor = ArgumentCaptor.forClass(ChangeListener.class);
+        Mockito.verify(validationMessage).addListener(validationCaptor.capture());
+
+        // simulate detach by calling unbind directly
+        BindingsVaa.unbind(parsableText, validationMessage,
+                modelCaptor.getValue(), validationCaptor.getValue());
+
+        Mockito.verify(parsableText).removeListener(modelCaptor.getValue());
+        Mockito.verify(validationMessage).removeListener(validationCaptor.getValue());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
     void bindParsableText_validationMessage_drivesErrorState() {
         var field = new TextField("Name");
         var parsableText = (Bindable<String>) Mockito.mock(Bindable.class);
