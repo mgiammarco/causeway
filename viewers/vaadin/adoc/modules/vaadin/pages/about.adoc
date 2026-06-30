@@ -1,8 +1,8 @@
 = Vaadin Viewer
 
-WARNING: This viewer is experimental (phase 1). It renders domain objects,
-collections and action prompts using Vaadin Flow, reusing the
-viewer-agnostic models from `causeway-viewer-commons`.
+WARNING: This viewer is experimental. It renders domain objects, collections and
+action prompts using Vaadin Flow, reusing the viewer-agnostic models from
+`causeway-viewer-commons`.
 
 == Enabling
 
@@ -34,19 +34,26 @@ What works (all browser-verified against the demo):
 * Editable fields per value type: text (`String`), numbers / `BigDecimal` /
   other scalars (text field), `boolean` (checkbox), `LocalDate` / `LocalDateTime`
   (date / date-time picker), and choices / enums (combo box)
+* Object references: choice-backed references and enums as a combo box, and
+  free references (entity / view-model) as a combo box populated from the
+  repository
+* `Markup` rendered as HTML; `Blob` / `Clob` as a download link
 * Collections rendered as a Vaadin `Grid`, with row-click drill-down to the
   object page
 * Action invocation, including a parameter dialog for parameterised actions
+  (value and reference parameters)
+* Inline property edits are persisted (the property negotiation is submitted on
+  change, within the request's transaction)
 
-Not yet (phase 2): object references without choices (object picker /
-autocomplete), blob/clob upload/download, markup/markdown rendering, bookmarks
-and breadcrumbs, hint persistence, themes, i18n, lazy-loaded / multi-select
-grids, and inline-edit save semantics for persistent entities.
+Not yet: object-reference autocomplete (large result sets), blob/clob upload,
+bookmarks and breadcrumbs, hint persistence, themes, i18n, and lazy-loaded /
+multi-select grids.
 
 == Trying it out
 
-A standalone, persistence-free demo (view-model domain only) lives in
-`viewers/vaadin/demo`. Run it with:
+A standalone, runnable demo lives in `viewers/vaadin/demo` — a tiny JPA domain
+(`DemoAuthor`, `DemoBook` with a book→author reference) on an in-memory H2
+database, seeded on startup. Run it with:
 
 [source,bash]
 ----
