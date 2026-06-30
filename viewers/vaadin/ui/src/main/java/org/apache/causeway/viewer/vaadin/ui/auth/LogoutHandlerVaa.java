@@ -18,13 +18,16 @@
  */
 package org.apache.causeway.viewer.vaadin.ui.auth;
 
+import com.vaadin.flow.component.UI;
+
 import org.springframework.stereotype.Service;
 
 import org.apache.causeway.core.security.authentication.logout.LogoutHandler;
 
 /**
  * Invalidates this viewer's session-stored authentication when the framework
- * (e.g. the {@code logout} mixin) triggers a logout.
+ * (e.g. the {@code logout} mixin) triggers a logout, then redirects the current
+ * UI to the app root so the route guard reroutes to the login view.
  */
 @Service
 public class LogoutHandlerVaa implements LogoutHandler {
@@ -32,5 +35,12 @@ public class LogoutHandlerVaa implements LogoutHandler {
     @Override
     public void logout() {
         AuthSessionStoreUtil.clear();
+        // if invoked on a Vaadin UI thread (the usual case, via the logout menu),
+        // force a full-page redirect so the now-anonymous next request is rerouted
+        // to the login view.
+        var ui = UI.getCurrent();
+        if (ui != null) {
+            ui.getPage().setLocation("/");
+        }
     }
 }
