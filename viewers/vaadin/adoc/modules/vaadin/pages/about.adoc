@@ -33,3 +33,23 @@ if your application does not use Hilla, exclude them via
 
 Not yet: blob/clob, markup rendering, bookmarks, hints, themes, i18n,
 lazy-loaded grids, model-to-UI refresh of temporal fields.
+
+== Trying it out
+
+A standalone, persistence-free demo (view-model domain only) lives in
+`viewers/vaadin/demo`. Run it with:
+
+[source,bash]
+----
+mvn -f viewers/vaadin/demo/pom.xml spring-boot:run
+----
+
+then open `http://localhost:8080/vaadinServlet/` and sign in with any
+credentials (the demo uses the bypass security manager).
+
+NOTE: With the default root URL mapping (`vaadin.urlMapping=/*`) the servlet
+is registered at `/vaadinServlet/*`; the root-to-servlet forwarding filter
+that Vaadin's own auto-configuration installs is not yet reproduced by this
+viewer, so the app is served under `/vaadinServlet/`. Likewise the login view
+currently redirects to `/` on success. Fixing root mapping (and the redirect
+target) is a phase-2 item.

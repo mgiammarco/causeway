@@ -32,6 +32,7 @@ import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.interactions.managed.ManagedAction;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
+import org.apache.causeway.core.metamodel.object.ManagedObjects;
 import org.apache.causeway.core.metamodel.tabular.DataTableInteractive;
 import org.apache.causeway.viewer.commons.applib.services.header.HeaderUiService;
 import org.apache.causeway.viewer.vaadin.model.context.MemberInvocationHandler;
@@ -125,7 +126,10 @@ public class MainViewVaa extends AppLayout
             final ManagedAction managedAction,
             final Can<ManagedObject> params,
             final ManagedObject actionResult) {
-        if (actionResult.objSpec().isPlural()) {
+        // a collection-valued action result is a *packed* ManagedObject; its
+        // objSpec() reports the element type (not plural), so detect packing
+        // explicitly rather than via objSpec().isPlural().
+        if (ManagedObjects.isPacked(actionResult)) {
             return TableViewVaa.forDataTableInteractive(
                     DataTableInteractive.forAction(managedAction, actionResult));
         }
