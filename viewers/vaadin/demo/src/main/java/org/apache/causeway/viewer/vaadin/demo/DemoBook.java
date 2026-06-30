@@ -65,6 +65,12 @@ public class DemoBook {
     @Property(editing = Editing.ENABLED)
     private boolean inStock;
 
+    /** value-typed enum -> rendered as a dropdown (ComboBox) of its constants. */
+    public enum Genre { PROGRAMMING, DESIGN, ARCHITECTURE, TESTING }
+
+    @Property(editing = Editing.ENABLED)
+    private Genre genre;
+
     @ObjectSupport
     public String title() {
         return title == null ? "(untitled)" : title;
@@ -110,6 +116,13 @@ public class DemoBook {
     }
     public void setInStock(final boolean inStock) {
         this.inStock = inStock;
+    }
+
+    public Genre getGenre() {
+        return genre;
+    }
+    public void setGenre(final Genre genre) {
+        this.genre = genre;
     }
 
     @Action

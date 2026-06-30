@@ -25,6 +25,7 @@ import org.apache.causeway.viewer.commons.services.CausewayModuleViewerCommonsSe
 import org.apache.causeway.viewer.vaadin.model.CausewayModuleViewerVaadinModel;
 import org.apache.causeway.viewer.vaadin.ui.components.UiComponentFactoryVaa;
 import org.apache.causeway.viewer.vaadin.ui.components.bool.BooleanFieldFactory;
+import org.apache.causeway.viewer.vaadin.ui.components.choices.ChoiceFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.other.FallbackFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.temporal.TemporalFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.text.TextFieldFactory;
@@ -43,6 +44,7 @@ import org.apache.causeway.viewer.vaadin.ui.pages.main.UiContextVaaDefault;
         // @Service & @Component beans of this module
         UiComponentFactoryVaa.class,
         FallbackFieldFactory.class,
+        ChoiceFieldFactory.class,
         TextFieldFactory.class,
         TemporalFieldFactory.class,
         BooleanFieldFactory.class,
