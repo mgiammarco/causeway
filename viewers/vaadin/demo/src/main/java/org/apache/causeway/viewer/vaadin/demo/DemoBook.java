@@ -22,10 +22,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import jakarta.inject.Named;
-import jakarta.xml.bind.annotation.XmlAccessType;
-import jakarta.xml.bind.annotation.XmlAccessorType;
-import jakarta.xml.bind.annotation.XmlRootElement;
-import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
 
 import org.apache.causeway.applib.annotation.Action;
 import org.apache.causeway.applib.annotation.DomainObject;
@@ -33,27 +34,34 @@ import org.apache.causeway.applib.annotation.Editing;
 import org.apache.causeway.applib.annotation.Nature;
 import org.apache.causeway.applib.annotation.ObjectSupport;
 import org.apache.causeway.applib.annotation.Property;
-import org.apache.causeway.applib.jaxb.JavaTimeJaxbAdapters.LocalDateToStringAdapter;
 
 /**
- * A tiny JAXB view-model used to exercise the Vaadin viewer's object page:
- * a String property (text field), a date property (date picker) and an action
- * with a parameter (parameter dialog).
+ * A JPA entity exercising every supported field kind on its object page:
+ * text ({@code title}/genre), number ({@code pageCount}), {@code BigDecimal}
+ * ({@code price}), {@code boolean} ({@code inStock}), date ({@code published}),
+ * enum choices ({@code genre}) and an object reference ({@code author}).
  */
-@XmlRootElement(name = "demoBook")
-@XmlAccessorType(XmlAccessType.FIELD)
+@Entity
 @Named("demo.Book")
-@DomainObject(nature = Nature.VIEW_MODEL)
+@DomainObject(nature = Nature.ENTITY)
 public class DemoBook {
+
+    /** value-typed enum -> rendered as a dropdown (ComboBox) of its constants. */
+    public enum Genre { PROGRAMMING, DESIGN, ARCHITECTURE, TESTING }
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
 
     @Property(editing = Editing.ENABLED)
     private String title;
 
+    /** object reference -> rendered as a ComboBox over all persisted authors. */
+    @ManyToOne
     @Property(editing = Editing.ENABLED)
-    private String author;
+    private DemoAuthor author;
 
     @Property(editing = Editing.ENABLED)
-    @XmlJavaTypeAdapter(LocalDateToStringAdapter.class)
     private LocalDate published;
 
     @Property(editing = Editing.ENABLED)
@@ -65,15 +73,19 @@ public class DemoBook {
     @Property(editing = Editing.ENABLED)
     private boolean inStock;
 
-    /** value-typed enum -> rendered as a dropdown (ComboBox) of its constants. */
-    public enum Genre { PROGRAMMING, DESIGN, ARCHITECTURE, TESTING }
-
     @Property(editing = Editing.ENABLED)
     private Genre genre;
 
     @ObjectSupport
     public String title() {
         return title == null ? "(untitled)" : title;
+    }
+
+    public Long getId() {
+        return id;
+    }
+    public void setId(final Long id) {
+        this.id = id;
     }
 
     public String getTitle() {
@@ -83,10 +95,10 @@ public class DemoBook {
         this.title = title;
     }
 
-    public String getAuthor() {
+    public DemoAuthor getAuthor() {
         return author;
     }
-    public void setAuthor(final String author) {
+    public void setAuthor(final DemoAuthor author) {
         this.author = author;
     }
 

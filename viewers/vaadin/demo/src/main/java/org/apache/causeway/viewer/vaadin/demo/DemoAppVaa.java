@@ -22,29 +22,35 @@ import com.vaadin.flow.spring.annotation.EnableVaadin;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.PropertySource;
 
 import org.apache.causeway.core.config.presets.CausewayPresets;
 import org.apache.causeway.core.runtimeservices.CausewayModuleCoreRuntimeServices;
+import org.apache.causeway.persistence.jpa.eclipselink.CausewayModulePersistenceJpaEclipselink;
 import org.apache.causeway.security.bypass.CausewayModuleSecurityBypass;
 import org.apache.causeway.viewer.vaadin.viewer.CausewayModuleViewerVaadinViewer;
 
 /**
- * Standalone runnable demo: boots the Vaadin viewer against the small
- * view-model domain in this package (no persistence). Run with
+ * Standalone runnable demo: boots the Vaadin viewer against a tiny JPA domain
+ * ({@link DemoAuthor}, {@link DemoBook}) on an in-memory H2 database. Run with
  * {@code mvn spring-boot:run} from this module, then open http://localhost:8080.
  */
 @SpringBootApplication
 @ComponentScan
+@EntityScan(basePackageClasses = DemoBook.class)
 // the @Route views (MainViewVaa, VaadinLoginView) live under the viewer's
 // own package, not under this app's package; tell Vaadin to scan it.
 @EnableVaadin("org.apache.causeway.viewer.vaadin")
 @Import({
     CausewayModuleCoreRuntimeServices.class,
     CausewayModuleSecurityBypass.class,
+    CausewayModulePersistenceJpaEclipselink.class,
     CausewayModuleViewerVaadinViewer.class,
 })
+@PropertySource(CausewayPresets.H2InMemory_withUniqueSchema)
 public class DemoAppVaa {
 
     public static void main(final String[] args) {
