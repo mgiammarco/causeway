@@ -69,13 +69,15 @@ public class ObjectViewVaa extends VerticalLayout {
     public static ObjectViewVaa fromObject(
             final UiComponentFactoryVaa uiComponentFactory,
             final Consumer<ManagedAction> actionEventHandler,
+            final Consumer<ManagedObject> objectNavHandler,
             final ManagedObject managedObject) {
-        return new ObjectViewVaa(uiComponentFactory, actionEventHandler, managedObject);
+        return new ObjectViewVaa(uiComponentFactory, actionEventHandler, objectNavHandler, managedObject);
     }
 
     protected ObjectViewVaa(
             final UiComponentFactoryVaa uiComponentFactory,
             final Consumer<ManagedAction> actionEventHandler,
+            final Consumer<ManagedObject> objectNavHandler,
             final ManagedObject managedObject) {
 
         var objectTitle = MmTitleUtils.titleOf(managedObject);
@@ -199,7 +201,8 @@ public class ObjectViewVaa extends VerticalLayout {
                             }
 
                             Vaa.add(container, TableViewVaa.forDataTableInteractive(
-                                    managedCollection.createDataTableModel()));
+                                    managedCollection.createDataTableModel(),
+                                    objectNavHandler));
                         });
             }
         };

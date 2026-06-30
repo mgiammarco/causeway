@@ -18,6 +18,7 @@
  */
 package org.apache.causeway.viewer.vaadin.ui.components.collection;
 
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import com.vaadin.flow.component.Component;
@@ -41,10 +42,20 @@ public class TableViewVaa extends VerticalLayout {
     private static final long serialVersionUID = 1L;
 
     public static Component forDataTableInteractive(final DataTableInteractive dataTable) {
-        return new TableViewVaa(dataTable);
+        return new TableViewVaa(dataTable, null);
     }
 
-    private TableViewVaa(final DataTableInteractive dataTable) {
+    /**
+     * @param onRowSelect invoked with the row's domain object when a row is clicked
+     *                    (e.g. to navigate to that object's page); may be {@code null}.
+     */
+    public static Component forDataTableInteractive(
+            final DataTableInteractive dataTable,
+            final Consumer<ManagedObject> onRowSelect) {
+        return new TableViewVaa(dataTable, onRowSelect);
+    }
+
+    private TableViewVaa(final DataTableInteractive dataTable, final Consumer<ManagedObject> onRowSelect) {
         var rows = dataTable.dataRowsFilteredAndSortedObservable().getValue();
         if (rows.isEmpty()) {
             add(new Span("No rows to display."));
@@ -62,6 +73,10 @@ public class TableViewVaa extends VerticalLayout {
                         .setHeader(column.columnFriendlyNameObservable().getValue()));
 
         grid.getColumns().forEach(column -> column.setAutoWidth(true));
+
+        if (onRowSelect != null) {
+            grid.addItemClickListener(event -> onRowSelect.accept(event.getItem().rowElement()));
+        }
 
         grid.setItems(rows.toList());
         grid.setColumnReorderingAllowed(true);

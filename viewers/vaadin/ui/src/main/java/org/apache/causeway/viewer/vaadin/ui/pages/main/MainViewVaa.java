@@ -118,7 +118,8 @@ public class MainViewVaa extends AppLayout
     @Override
     public Component handle(final ManagedObject object) {
         return ObjectViewVaa.fromObject(
-                uiComponentFactory, uiActionHandler::handleActionLinkClicked, object);
+                uiComponentFactory, uiActionHandler::handleActionLinkClicked,
+                uiContext::route, object);
     }
 
     @Override
@@ -131,7 +132,8 @@ public class MainViewVaa extends AppLayout
         // explicitly rather than via objSpec().isPlural().
         if (ManagedObjects.isPacked(actionResult)) {
             return TableViewVaa.forDataTableInteractive(
-                    DataTableInteractive.forAction(managedAction, actionResult));
+                    DataTableInteractive.forAction(managedAction, actionResult),
+                    uiContext::route);
         }
         return handle(actionResult);
     }
