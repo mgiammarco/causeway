@@ -24,8 +24,10 @@ import org.springframework.context.annotation.Import;
 import org.apache.causeway.viewer.commons.services.CausewayModuleViewerCommonsServices;
 import org.apache.causeway.viewer.vaadin.model.CausewayModuleViewerVaadinModel;
 import org.apache.causeway.viewer.vaadin.ui.components.UiComponentFactoryVaa;
+import org.apache.causeway.viewer.vaadin.ui.components.blob.BlobClobFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.bool.BooleanFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.choices.ChoiceFieldFactory;
+import org.apache.causeway.viewer.vaadin.ui.components.markup.MarkupFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.other.FallbackFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.reference.ObjectReferenceFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.temporal.TemporalFieldFactory;
@@ -47,6 +49,8 @@ import org.apache.causeway.viewer.vaadin.ui.pages.main.UiContextVaaDefault;
         FallbackFieldFactory.class,
         ChoiceFieldFactory.class,
         ObjectReferenceFieldFactory.class,
+        MarkupFieldFactory.class,
+        BlobClobFieldFactory.class,
         TextFieldFactory.class,
         TemporalFieldFactory.class,
         BooleanFieldFactory.class,

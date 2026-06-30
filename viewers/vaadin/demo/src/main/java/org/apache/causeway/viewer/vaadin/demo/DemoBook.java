@@ -34,6 +34,10 @@ import org.apache.causeway.applib.annotation.Editing;
 import org.apache.causeway.applib.annotation.Nature;
 import org.apache.causeway.applib.annotation.ObjectSupport;
 import org.apache.causeway.applib.annotation.Property;
+import org.apache.causeway.applib.value.Blob;
+import org.apache.causeway.applib.value.Clob;
+import org.apache.causeway.applib.value.Markup;
+import org.apache.causeway.applib.value.NamedWithMimeType.CommonMimeType;
 
 /**
  * A JPA entity exercising every supported field kind on its object page:
@@ -135,6 +139,28 @@ public class DemoBook {
     }
     public void setGenre(final Genre genre) {
         this.genre = genre;
+    }
+
+    // -- derived (read-only) value properties demonstrating Markup / Clob / Blob rendering
+
+    @Property
+    public Markup getSummary() {
+        var authorName = author != null ? author.getName() : "unknown";
+        return new Markup("<b>" + title() + "</b> &mdash; <i>" + authorName + "</i>"
+                + ", " + pageCount + " pages, " + (inStock ? "in stock" : "out of stock"));
+    }
+
+    @Property
+    public Clob getBlurb() {
+        return Clob.of(title() + ".txt", CommonMimeType.TXT,
+                "'" + title() + "' is a " + genre + " book by "
+                        + (author != null ? author.getName() : "?") + ".");
+    }
+
+    @Property
+    public Blob getCover() {
+        var bytes = ("cover-of-" + title()).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return Blob.of(title() + "-cover.txt", CommonMimeType.TXT, bytes);
     }
 
     @Action
