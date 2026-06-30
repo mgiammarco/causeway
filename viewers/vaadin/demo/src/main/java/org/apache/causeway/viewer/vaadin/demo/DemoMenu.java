@@ -46,22 +46,26 @@ public class DemoMenu {
     @ActionLayout(sequence = "1")
     public List<DemoBook> listBooks() {
         return List.of(
-                book("Refactoring", "Martin Fowler", LocalDate.of(1999, 7, 8)),
-                book("Domain-Driven Design", "Eric Evans", LocalDate.of(2003, 8, 30)),
-                book("Clean Code", "Robert C. Martin", LocalDate.of(2008, 8, 1)));
+                book("Refactoring", "Martin Fowler", LocalDate.of(1999, 7, 8), 448, "54.99", true),
+                book("Domain-Driven Design", "Eric Evans", LocalDate.of(2003, 8, 30), 560, "64.99", true),
+                book("Clean Code", "Robert C. Martin", LocalDate.of(2008, 8, 1), 464, "44.99", false));
     }
 
     @Action
     @ActionLayout(sequence = "2")
     public DemoBook createBook(final String title, final String author) {
-        return book(title, author, LocalDate.now());
+        return book(title, author, LocalDate.now(), 0, "0.00", false);
     }
 
-    private DemoBook book(final String title, final String author, final LocalDate published) {
+    private DemoBook book(final String title, final String author, final LocalDate published,
+            final int pageCount, final String price, final boolean inStock) {
         var demoBook = factoryService.viewModel(DemoBook.class);
         demoBook.setTitle(title);
         demoBook.setAuthor(author);
         demoBook.setPublished(published);
+        demoBook.setPageCount(pageCount);
+        demoBook.setPrice(new java.math.BigDecimal(price));
+        demoBook.setInStock(inStock);
         return demoBook;
     }
 }

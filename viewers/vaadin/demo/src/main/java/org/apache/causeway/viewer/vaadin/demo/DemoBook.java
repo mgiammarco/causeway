@@ -18,6 +18,7 @@
  */
 package org.apache.causeway.viewer.vaadin.demo;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import jakarta.inject.Named;
@@ -55,6 +56,15 @@ public class DemoBook {
     @XmlJavaTypeAdapter(LocalDateToStringAdapter.class)
     private LocalDate published;
 
+    @Property(editing = Editing.ENABLED)
+    private int pageCount;
+
+    @Property(editing = Editing.ENABLED)
+    private BigDecimal price;
+
+    @Property(editing = Editing.ENABLED)
+    private boolean inStock;
+
     @ObjectSupport
     public String title() {
         return title == null ? "(untitled)" : title;
@@ -79,6 +89,27 @@ public class DemoBook {
     }
     public void setPublished(final LocalDate published) {
         this.published = published;
+    }
+
+    public int getPageCount() {
+        return pageCount;
+    }
+    public void setPageCount(final int pageCount) {
+        this.pageCount = pageCount;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+    public void setPrice(final BigDecimal price) {
+        this.price = price;
+    }
+
+    public boolean isInStock() {
+        return inStock;
+    }
+    public void setInStock(final boolean inStock) {
+        this.inStock = inStock;
     }
 
     @Action
