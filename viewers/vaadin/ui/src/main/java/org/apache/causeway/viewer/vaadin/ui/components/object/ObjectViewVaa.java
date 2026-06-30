@@ -174,6 +174,11 @@ public class ObjectViewVaa extends VerticalLayout {
                         .ifPresent(managedProperty -> {
                             interaction.checkUsability();
                             var propertyNegotiation = managedProperty.startNegotiation();
+                            // persist edits: whenever a field writes a new value into the
+                            // negotiation, submit it into the owning object (within the
+                            // request's interaction/transaction).
+                            propertyNegotiation.getValue().addListener((observable, oldValue, newValue) ->
+                                    propertyNegotiation.submit());
                             Vaa.add(container, uiComponentFactory.componentFor(
                                     new UiComponentFactory.ComponentRequest(
                                             propertyNegotiation,
