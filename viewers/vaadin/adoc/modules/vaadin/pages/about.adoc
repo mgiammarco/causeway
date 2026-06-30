@@ -23,16 +23,25 @@ NOTE: `vaadin-spring-boot-starter` transitively brings Hilla auto-configurations
 if your application does not use Hilla, exclude them via
 `spring.autoconfigure.exclude` (see `VaadinModuleContextLoadsTest` for the list).
 
-== Scope (phase 1)
+== Scope
 
-* Login via Causeway's own `AuthenticationManager`
+What works (all browser-verified against the demo):
+
+* Login / logout via Causeway's own `AuthenticationManager`
+* Served at the application root (`/`) with the standard root URL mapping
 * Menubar built from the domain-service metamodel
-* Domain-object page driven by the bootstrap grid layout
-* Collections rendered as Vaadin `Grid`
-* Action invocation incl. parameter dialogs (text, date, date-time inputs)
+* Domain-object page driven by the bootstrap grid layout (fieldsets, tab groups)
+* Editable fields per value type: text (`String`), numbers / `BigDecimal` /
+  other scalars (text field), `boolean` (checkbox), `LocalDate` / `LocalDateTime`
+  (date / date-time picker), and choices / enums (combo box)
+* Collections rendered as a Vaadin `Grid`, with row-click drill-down to the
+  object page
+* Action invocation, including a parameter dialog for parameterised actions
 
-Not yet: blob/clob, markup rendering, bookmarks, hints, themes, i18n,
-lazy-loaded grids, model-to-UI refresh of temporal fields.
+Not yet (phase 2): object references without choices (object picker /
+autocomplete), blob/clob upload/download, markup/markdown rendering, bookmarks
+and breadcrumbs, hint persistence, themes, i18n, lazy-loaded / multi-select
+grids, and inline-edit save semantics for persistent entities.
 
 == Trying it out
 
@@ -44,12 +53,5 @@ A standalone, persistence-free demo (view-model domain only) lives in
 mvn -f viewers/vaadin/demo/pom.xml spring-boot:run
 ----
 
-then open `http://localhost:8080/vaadinServlet/` and sign in with any
-credentials (the demo uses the bypass security manager).
-
-NOTE: With the default root URL mapping (`vaadin.urlMapping=/*`) the servlet
-is registered at `/vaadinServlet/*`; the root-to-servlet forwarding filter
-that Vaadin's own auto-configuration installs is not yet reproduced by this
-viewer, so the app is served under `/vaadinServlet/`. Likewise the login view
-currently redirects to `/` on success. Fixing root mapping (and the redirect
-target) is a phase-2 item.
+then open `http://localhost:8080/` and sign in with any credentials (the demo
+uses the bypass security manager).
