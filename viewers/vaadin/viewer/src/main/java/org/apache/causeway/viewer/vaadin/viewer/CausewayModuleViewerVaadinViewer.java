@@ -22,6 +22,7 @@ import com.vaadin.flow.spring.RootMappedCondition;
 import com.vaadin.flow.spring.SpringBootAutoConfiguration;
 import com.vaadin.flow.spring.SpringServlet;
 import com.vaadin.flow.spring.VaadinConfigurationProperties;
+import com.vaadin.flow.spring.VaadinServletConfiguration;
 import com.vaadin.flow.spring.VaadinServletContextInitializer;
 
 import jakarta.inject.Inject;
@@ -47,6 +48,10 @@ import org.apache.causeway.viewer.vaadin.ui.CausewayModuleViewerVaadinUi;
 @Import({
         CausewayModuleViewerVaadinUi.class,
         VaadinConfigurationProperties.class,
+        // registers the root-mapping forwarding controller (/ -> /vaadinServlet/*),
+        // active only when vaadin.urlMapping is the root mapping; normally pulled in by
+        // Vaadin's SpringBootAutoConfiguration, which we exclude to install our own servlet.
+        VaadinServletConfiguration.class,
 })
 @PropertySource("classpath:/vaadin.properties")
 // standard Vaadin Spring Boot bootstrapping is replaced by the beans below

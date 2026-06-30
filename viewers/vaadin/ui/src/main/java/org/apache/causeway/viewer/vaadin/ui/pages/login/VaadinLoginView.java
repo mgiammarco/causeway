@@ -44,6 +44,10 @@ public class VaadinLoginView extends VerticalLayout {
             var request = new AuthenticationRequestPassword(
                     event.getUsername(), event.getPassword());
             if (authenticationHandler.loginToSession(request)) {
+                // full-page redirect to the app root: this starts a NEW request that the
+                // servlet wraps in an interaction bound to the just-stored session auth,
+                // so the main view renders as the logged-in user (a client-side navigate()
+                // would stay in the current, still-anonymous interaction).
                 UI.getCurrent().getPage().setLocation("/");
             } else {
                 loginForm.setError(true);
