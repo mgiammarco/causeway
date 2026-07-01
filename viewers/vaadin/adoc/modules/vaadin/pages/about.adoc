@@ -44,10 +44,18 @@ What works (all browser-verified against the demo):
   (value and reference parameters)
 * Inline property edits are persisted (the property negotiation is submitted on
   change, within the request's transaction)
+* Object references rendered as a combo box with server-side type-to-filter
+  (autocomplete); `Blob`/`Clob` support both download and file upload
+* Action results are handled by kind: collection → grid, object → object page,
+  value → download/HTML/text, void → notification
+* Lumo theme, application title in the navbar, and a breadcrumb of recently
+  visited objects
+* i18n via a `ResourceBundle`-backed `I18NProvider` (add
+  `translations/messages[_locale].properties` to translate)
 
-Not yet: object-reference autocomplete (large result sets), blob/clob upload,
-bookmarks and breadcrumbs, hint persistence, themes, i18n, and lazy-loaded /
-multi-select grids.
+Not yet: hint persistence, theme switching (dark mode), lazy-loaded /
+multi-select grids, and object-reference autocomplete paged over very large
+result sets (currently filters the loaded set server-side).
 
 == Trying it out
 
