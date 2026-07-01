@@ -20,14 +20,20 @@ package org.apache.causeway.viewer.vaadin.ui.pages.main;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.applayout.AppLayout;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+
+import org.apache.causeway.core.metamodel.object.MmTitleUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +78,10 @@ public class MainViewVaa extends AppLayout
     /** Swappable page area that holds whichever view is currently displayed. */
     private final Div pageContent = new Div();
 
+    /** Breadcrumb trail of recently-visited objects (most recent last). */
+    private final HorizontalLayout breadcrumbBar = new HorizontalLayout();
+    private static final int MAX_BREADCRUMBS = 8;
+
     /**
      * Guards against rebuilding the navbar on every navigation event.
      * {@link BeforeEnterEvent} fires each time the user navigates to this route,
@@ -93,6 +103,7 @@ public class MainViewVaa extends AppLayout
 
         uiContext.setNewPageHandler(this::replaceContent);
         uiContext.setPageFactory(this);
+        uiContext.setObjectVisitedHandler(this::addBreadcrumb);
     }
 
     // -- BeforeEnterObserver
@@ -126,9 +137,20 @@ public class MainViewVaa extends AppLayout
         headerBar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
         addToNavbar(headerBar);
 
+        breadcrumbBar.setWidthFull();
+        breadcrumbBar.setSpacing(false);
+        breadcrumbBar.setAlignItems(FlexComponent.Alignment.CENTER);
+        breadcrumbBar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM, LumoUtility.Padding.Top.SMALL,
+                LumoUtility.FlexWrap.WRAP);
+
         pageContent.setWidthFull();
         pageContent.addClassNames(LumoUtility.Padding.LARGE);
-        setContent(pageContent);
+
+        var contentWrap = new VerticalLayout(breadcrumbBar, pageContent);
+        contentWrap.setPadding(false);
+        contentWrap.setSpacing(false);
+        contentWrap.setSizeFull();
+        setContent(contentWrap);
         renderHomepage();
     }
 
@@ -175,6 +197,36 @@ public class MainViewVaa extends AppLayout
             uiContext.route(homepage);
         } else {
             log.debug("no home-page adapter configured — page area left empty");
+        }
+    }
+
+    /** Appends a clickable breadcrumb for a visited object (deduping the most recent). */
+    private void addBreadcrumb(final ManagedObject object) {
+        if (object == null || object.getPojo() == null) {
+            return;
+        }
+        var title = MmTitleUtils.titleOf(object);
+        var count = breadcrumbBar.getComponentCount();
+        if (count > 0 && breadcrumbBar.getComponentAt(count - 1) instanceof Button last
+                && title.equals(last.getText())) {
+            return; // already the current crumb
+        }
+        if (count > 0) {
+            var sep = new Span("›");
+            sep.addClassNames(LumoUtility.TextColor.SECONDARY, LumoUtility.Padding.Horizontal.XSMALL);
+            breadcrumbBar.add(sep);
+        }
+        var crumb = new Button(title, event -> uiContext.route(object));
+        crumb.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
+        breadcrumbBar.add(crumb);
+
+        // cap the trail: each crumb is a Button plus a preceding separator (except the first)
+        while (breadcrumbBar.getComponentCount() > (MAX_BREADCRUMBS * 2 - 1)) {
+            breadcrumbBar.remove(breadcrumbBar.getComponentAt(0));
+            if (breadcrumbBar.getComponentCount() > 0
+                    && breadcrumbBar.getComponentAt(0) instanceof Span) {
+                breadcrumbBar.remove(breadcrumbBar.getComponentAt(0));
+            }
         }
     }
 }

@@ -33,6 +33,7 @@ import org.apache.causeway.viewer.vaadin.ui.components.reference.ObjectReference
 import org.apache.causeway.viewer.vaadin.ui.components.temporal.TemporalFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.text.TextFieldFactory;
 import org.apache.causeway.viewer.vaadin.ui.components.value.ValueFieldFactory;
+import org.apache.causeway.viewer.vaadin.ui.i18n.VaadinI18nProviderVaa;
 import org.apache.causeway.viewer.vaadin.ui.auth.LogoutHandlerVaa;
 import org.apache.causeway.viewer.vaadin.ui.auth.VaadinAuthenticationHandler;
 import org.apache.causeway.viewer.vaadin.ui.pages.main.UiActionHandlerVaa;
@@ -59,6 +60,7 @@ import org.apache.causeway.viewer.vaadin.ui.pages.main.UiContextVaaDefault;
         UiActionHandlerVaa.class,
         VaadinAuthenticationHandler.class,
         LogoutHandlerVaa.class,
+        VaadinI18nProviderVaa.class,
 })
 public class CausewayModuleViewerVaadinUi {
 }

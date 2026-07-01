@@ -38,6 +38,13 @@ public interface UiContextVaa {
     /** Registered by the application shell: knows how to render domain artifacts. */
     void setPageFactory(MemberInvocationHandler<Component> pageFactory);
 
+    /**
+     * Registered by the application shell: notified of each domain object navigated
+     * to (via {@link #route(ManagedObject)}), so it can maintain a breadcrumb /
+     * recently-visited trail.
+     */
+    void setObjectVisitedHandler(Consumer<ManagedObject> objectVisitedHandler);
+
     /** Renders {@code object} and hands it to the page handler. */
     void route(ManagedObject object);
 

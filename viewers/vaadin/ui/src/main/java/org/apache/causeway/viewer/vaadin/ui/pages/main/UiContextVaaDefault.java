@@ -44,6 +44,7 @@ public class UiContextVaaDefault implements UiContextVaa {
 
     private Consumer<Component> newPageHandler;
     private MemberInvocationHandler<Component> pageFactory;
+    private Consumer<ManagedObject> objectVisitedHandler;
 
     @Override
     public void setNewPageHandler(final Consumer<Component> newPageHandler) {
@@ -56,8 +57,16 @@ public class UiContextVaaDefault implements UiContextVaa {
     }
 
     @Override
+    public void setObjectVisitedHandler(final Consumer<ManagedObject> objectVisitedHandler) {
+        this.objectVisitedHandler = objectVisitedHandler;
+    }
+
+    @Override
     public void route(final ManagedObject object) {
         ensureInitialized();
+        if (objectVisitedHandler != null) {
+            objectVisitedHandler.accept(object);
+        }
         newPageHandler.accept(pageFactory.handle(object));
     }
 
