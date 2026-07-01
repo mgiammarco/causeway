@@ -71,8 +71,13 @@ public class ObjectReferenceFieldFactory implements UiComponentHandlerVaa {
         }
 
         var comboBox = new ComboBox<ManagedObject>(request.getFriendlyName());
-        comboBox.setItems(items);
         comboBox.setItemLabelGenerator(MmTitleUtils::titleOf);
+        // type-to-filter (autocomplete) matching the title, evaluated on the server.
+        comboBox.setItems(
+                (item, filter) -> MmTitleUtils.titleOf(item).toLowerCase()
+                        .contains(filter.toLowerCase()),
+                items);
+        comboBox.setClearButtonVisible(true);
         comboBox.setValue(matchCurrent(items, request));
         comboBox.setReadOnly(readOnly);
         if (!readOnly) {
