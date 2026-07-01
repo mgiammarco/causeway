@@ -34,6 +34,8 @@ import org.apache.causeway.applib.annotation.Editing;
 import org.apache.causeway.applib.annotation.Nature;
 import org.apache.causeway.applib.annotation.ObjectSupport;
 import org.apache.causeway.applib.annotation.Property;
+import org.apache.causeway.applib.annotation.PropertyLayout;
+import org.apache.causeway.applib.annotation.Where;
 import org.apache.causeway.applib.value.Blob;
 import org.apache.causeway.applib.value.Clob;
 import org.apache.causeway.applib.value.Markup;
@@ -144,6 +146,7 @@ public class DemoBook {
     // -- derived (read-only) value properties demonstrating Markup / Clob / Blob rendering
 
     @Property
+    @PropertyLayout(hidden = Where.ALL_TABLES)
     public Markup getSummary() {
         var authorName = author != null ? author.getName() : "unknown";
         return new Markup("<b>" + title() + "</b> &mdash; <i>" + authorName + "</i>"
@@ -151,6 +154,7 @@ public class DemoBook {
     }
 
     @Property
+    @PropertyLayout(hidden = Where.ALL_TABLES)
     public Clob getBlurb() {
         return Clob.of(title() + ".txt", CommonMimeType.TXT,
                 "'" + title() + "' is a " + genre + " book by "
@@ -158,6 +162,7 @@ public class DemoBook {
     }
 
     @Property
+    @PropertyLayout(hidden = Where.ALL_TABLES)
     public Blob getCover() {
         var bytes = ("cover-of-" + title()).getBytes(java.nio.charset.StandardCharsets.UTF_8);
         return Blob.of(title() + "-cover.txt", CommonMimeType.TXT, bytes);

@@ -90,8 +90,18 @@ public class TableViewVaa extends VerticalLayout {
     }
 
     private static String stringifyCellElement(final ManagedObject cellElement) {
-        return cellElement != null && cellElement.getPojo() != null
-                ? MmTitleUtils.titleOf(cellElement)
-                : "";
+        if (cellElement == null || cellElement.getPojo() == null) {
+            return "";
+        }
+        var pojo = cellElement.getPojo();
+        // render "large" value types compactly in a table cell rather than via their
+        // (verbose) default title / toString.
+        if (pojo instanceof org.apache.causeway.applib.value.Markup markup) {
+            return markup.html() == null ? "" : markup.html().replaceAll("<[^>]+>", "").strip();
+        }
+        if (pojo instanceof org.apache.causeway.applib.value.NamedWithMimeType named) {
+            return named.name();
+        }
+        return MmTitleUtils.titleOf(cellElement);
     }
 }

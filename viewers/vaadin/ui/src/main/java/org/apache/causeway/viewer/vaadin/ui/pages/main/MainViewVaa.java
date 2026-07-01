@@ -126,22 +126,28 @@ public class MainViewVaa extends AppLayout
                 LumoUtility.Whitespace.NOWRAP);
 
         var navbar = header.navbar();
-        var headerBar = new HorizontalLayout(
-                title,
-                MenuBuilderVaa.buildMenuBar(navbar.primary(), uiActionHandler::handleActionLinkClicked),
-                MenuBuilderVaa.buildMenuBar(navbar.secondary(), uiActionHandler::handleActionLinkClicked),
-                MenuBuilderVaa.buildMenuBar(navbar.tertiary(), uiActionHandler::handleActionLinkClicked));
+        var primaryMenu = MenuBuilderVaa.buildMenuBar(
+                navbar.primary(), uiActionHandler::handleActionLinkClicked);
+        var secondaryMenu = MenuBuilderVaa.buildMenuBar(
+                navbar.secondary(), uiActionHandler::handleActionLinkClicked);
+        var tertiaryMenu = MenuBuilderVaa.buildMenuBar(
+                navbar.tertiary(), uiActionHandler::handleActionLinkClicked);
+
+        // flexible gap pushes the secondary/tertiary (utility) menus to the right
+        var spacer = new Div();
+
+        var headerBar = new HorizontalLayout(title, primaryMenu, spacer, secondaryMenu, tertiaryMenu);
         headerBar.setAlignItems(FlexComponent.Alignment.CENTER);
         headerBar.setWidthFull();
-        headerBar.setSpacing(true);
+        headerBar.expand(spacer);
         headerBar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
         addToNavbar(headerBar);
 
-        breadcrumbBar.setWidthFull();
         breadcrumbBar.setSpacing(false);
         breadcrumbBar.setAlignItems(FlexComponent.Alignment.CENTER);
         breadcrumbBar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM, LumoUtility.Padding.Top.SMALL,
                 LumoUtility.FlexWrap.WRAP);
+        breadcrumbBar.setVisible(false); // shown only once there is an actual trail
 
         pageContent.setWidthFull();
         pageContent.addClassNames(LumoUtility.Padding.LARGE);
@@ -228,5 +234,10 @@ public class MainViewVaa extends AppLayout
                 breadcrumbBar.remove(breadcrumbBar.getComponentAt(0));
             }
         }
+
+        // show the trail only once it holds more than one object (otherwise it just
+        // duplicates the page title)
+        var crumbCount = (int) breadcrumbBar.getChildren().filter(c -> c instanceof Button).count();
+        breadcrumbBar.setVisible(crumbCount > 1);
     }
 }

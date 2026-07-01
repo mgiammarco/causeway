@@ -54,7 +54,9 @@ import org.apache.causeway.viewer.vaadin.viewer.CausewayModuleViewerVaadinViewer
 public class DemoAppVaa {
 
     public static void main(final String[] args) {
-        CausewayPresets.prototyping();
+        // note: prototyping mode is intentionally NOT enabled — it would add the
+        // 'Prototyping' menu and a raft of developer actions (Download Layout,
+        // Inspect Metamodel, ...) to every object, cluttering the demo UI.
         SpringApplication.run(DemoAppVaa.class, args);
     }
 }
