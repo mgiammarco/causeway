@@ -19,12 +19,15 @@
 package org.apache.causeway.viewer.vaadin.ui.components.blob;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.server.StreamResource;
 
 import org.springframework.core.annotation.Order;
@@ -32,13 +35,14 @@ import org.springframework.core.annotation.Order;
 import org.apache.causeway.applib.annotation.PriorityPrecedence;
 import org.apache.causeway.applib.value.Blob;
 import org.apache.causeway.applib.value.Clob;
+import org.apache.causeway.core.metamodel.object.ManagedObject;
 import org.apache.causeway.viewer.commons.model.components.UiComponentFactory.ComponentRequest;
 import org.apache.causeway.viewer.vaadin.ui.components.UiComponentHandlerVaa;
 
 /**
- * Renders a {@link Blob} or {@link Clob} value property as a labelled download
- * link (the binary/character content is streamed on demand). Read-only; upload
- * editing of persisted blobs is a later increment.
+ * Renders a {@link Blob} or {@link Clob} value property: a download link for the
+ * current content, plus (when editable) a file {@link Upload} whose result is
+ * written back into the value.
  */
 @org.springframework.stereotype.Component
 @Order(PriorityPrecedence.MIDPOINT)
@@ -71,7 +75,33 @@ public class BlobClobFieldFactory implements UiComponentHandlerVaa {
         } else {
             layout.add(new Span("(none)"));
         }
+
+        if (!request.disablingUiModelIfAny().isPresent()) {
+            layout.add(uploadField(request));
+        }
         return layout;
+    }
+
+    private static Upload uploadField(final ComponentRequest request) {
+        var isClob = request.isFeatureTypeEqualTo(Clob.class);
+        var buffer = new MemoryBuffer();
+        var upload = new Upload(buffer);
+        upload.setMaxFiles(1);
+        upload.addSucceededListener(event -> {
+            try {
+                var bytes = buffer.getInputStream().readAllBytes();
+                var name = event.getFileName();
+                var mime = event.getMIMEType();
+                Object value = isClob
+                        ? new Clob(name, mime, new String(bytes, StandardCharsets.UTF_8).toCharArray())
+                        : new Blob(name, mime, bytes);
+                request.managedValue().getValue().setValue(
+                        ManagedObject.adaptSingular(request.getFeatureTypeSpec(), value));
+            } catch (IOException ex) {
+                throw new RuntimeException("failed to read uploaded file", ex);
+            }
+        });
+        return upload;
     }
 
     private static Anchor downloadLink(final String fileName, final byte[] content) {

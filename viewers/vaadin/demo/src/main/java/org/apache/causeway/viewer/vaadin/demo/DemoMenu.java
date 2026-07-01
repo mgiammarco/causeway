@@ -78,6 +78,12 @@ public class DemoMenu {
     }
 
     @Action
+    @ActionLayout(sequence = "5", describedAs = "demonstrates editable Blob/Clob upload fields")
+    public DemoUpload openUploadDemo() {
+        return factoryService.viewModel(DemoUpload.class);
+    }
+
+    @Action
     @ActionLayout(sequence = "9", describedAs = "(re)create three sample authors and books")
     public List<DemoBook> populate() {
         var fowler = createAuthor("Martin Fowler");
