@@ -22,6 +22,8 @@ import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.server.ServiceInitEvent;
 import com.vaadin.flow.server.VaadinServiceInitListener;
+import com.vaadin.flow.theme.Theme;
+import com.vaadin.flow.theme.lumo.Lumo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +43,7 @@ import org.apache.causeway.viewer.vaadin.ui.pages.login.VaadinLoginView;
  * wrapper, not by this guard.
  */
 @Component
+@Theme(variant = Lumo.LIGHT)
 public class VaadinAuthenticationHandler
         implements AppShellConfigurator, VaadinServiceInitListener {
 

@@ -31,6 +31,7 @@ import com.vaadin.flow.component.orderedlayout.FlexLayout;
 import com.vaadin.flow.component.orderedlayout.FlexLayout.FlexWrap;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.theme.lumo.LumoUtility;
 
 import org.apache.causeway.applib.annotation.Where;
 import org.apache.causeway.applib.layout.component.ActionLayoutData;
@@ -86,7 +87,8 @@ public class ObjectViewVaa extends VerticalLayout {
 
             @Override
             protected void onObjectTitle(final HasComponents container, final DomainObjectLayoutData domainObjectData) {
-                Vaa.add(container, new H1(objectTitle));
+                var h1 = Vaa.add(container, new H1(objectTitle));
+                h1.addClassNames(LumoUtility.Margin.Bottom.MEDIUM);
             }
 
             @Override
@@ -100,11 +102,13 @@ public class ObjectViewVaa extends VerticalLayout {
             @Override
             protected HasComponents newCol(final HasComponents container, final BSCol bsCol) {
                 var uiCol = Vaa.add(container, new VerticalLayout());
+                uiCol.setPadding(false);
+                uiCol.setSpacing(false);
                 if (container instanceof FlexLayout flexLayout) {
                     flexLayout.setFlexGrow(bsCol.getSpan(), uiCol);
                 }
-                uiCol.setWidth(null);
-                uiCol.setMinWidth(String.format("%dem", bsCol.getSpan() * 3));
+                // fill the available width so the enclosed form can use multiple columns
+                uiCol.setWidthFull();
                 return uiCol;
             }
 
@@ -134,15 +138,25 @@ public class ObjectViewVaa extends VerticalLayout {
 
             @Override
             protected HasComponents newFieldSet(final HasComponents container, final FieldSet fieldSetData) {
-                Vaa.add(container, new H2(fieldSetData.getName()));
+                // render each fieldset as a light "card": header, associated actions, then a
+                // two-column responsive form for its properties.
+                var card = Vaa.add(container, new com.vaadin.flow.component.html.Div());
+                card.setWidthFull();
+                card.addClassNames(LumoUtility.Background.CONTRAST_5, LumoUtility.BorderRadius.LARGE,
+                        LumoUtility.Padding.MEDIUM, LumoUtility.Margin.Bottom.MEDIUM);
 
-                var actionBar = newActionPanel(container);
+                var heading = Vaa.add(card, new H2(fieldSetData.getName()));
+                heading.addClassNames(LumoUtility.FontSize.MEDIUM, LumoUtility.Margin.Bottom.SMALL);
+
+                var actionBar = newActionPanel(card);
                 for (var actionData : fieldSetData.getActions()) {
                     onAction(actionBar, actionData);
                 }
 
-                var uiFieldSet = Vaa.add(container, new FormLayout());
-                uiFieldSet.setResponsiveSteps(new ResponsiveStep("0", 1));
+                var uiFieldSet = Vaa.add(card, new FormLayout());
+                uiFieldSet.setResponsiveSteps(
+                        new ResponsiveStep("0", 1),
+                        new ResponsiveStep("40em", 2));
                 return uiFieldSet;
             }
 
@@ -216,6 +230,11 @@ public class ObjectViewVaa extends VerticalLayout {
                 .ifPresentOrElse(
                         uiGridLayout -> uiGridLayout.visit(gridVisitor),
                         () -> add(new H1(objectTitle)));
+        // present the object as a tidy, readable centred column rather than a
+        // full-bleed form with a large empty right-hand side.
         setWidthFull();
+        setMaxWidth("60em");
+        getStyle().set("margin-inline", "auto");
+        setPadding(false);
     }
 }

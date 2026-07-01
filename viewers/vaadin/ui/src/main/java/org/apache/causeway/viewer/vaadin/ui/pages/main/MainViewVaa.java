@@ -21,9 +21,13 @@ package org.apache.causeway.viewer.vaadin.ui.pages.main;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.theme.lumo.LumoUtility;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +44,7 @@ import org.apache.causeway.viewer.vaadin.model.context.UiContextVaa;
 import org.apache.causeway.viewer.vaadin.ui.components.UiComponentFactoryVaa;
 import org.apache.causeway.viewer.vaadin.ui.components.collection.TableViewVaa;
 import org.apache.causeway.viewer.vaadin.ui.components.object.ObjectViewVaa;
+import org.apache.causeway.viewer.vaadin.ui.components.result.ValueResultViewVaa;
 
 /**
  * Application shell: navbar with the metamodel-driven menu, swappable page
@@ -101,14 +106,28 @@ public class MainViewVaa extends AppLayout
 
         setPrimarySection(Section.NAVBAR);
 
-        var navbar = headerUiService.getHeader().navbar();
-        addToNavbar(MenuBuilderVaa.buildMenuBar(
-                navbar.primary(), uiActionHandler::handleActionLinkClicked));
-        addToNavbar(MenuBuilderVaa.buildMenuBar(
-                navbar.secondary(), uiActionHandler::handleActionLinkClicked));
-        addToNavbar(MenuBuilderVaa.buildMenuBar(
-                navbar.tertiary(), uiActionHandler::handleActionLinkClicked));
+        var header = headerUiService.getHeader();
+        var appName = header.branding() != null
+                ? header.branding().getName().orElse("Apache Causeway")
+                : "Apache Causeway";
+        var title = new H1(appName);
+        title.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE,
+                LumoUtility.Whitespace.NOWRAP);
 
+        var navbar = header.navbar();
+        var headerBar = new HorizontalLayout(
+                title,
+                MenuBuilderVaa.buildMenuBar(navbar.primary(), uiActionHandler::handleActionLinkClicked),
+                MenuBuilderVaa.buildMenuBar(navbar.secondary(), uiActionHandler::handleActionLinkClicked),
+                MenuBuilderVaa.buildMenuBar(navbar.tertiary(), uiActionHandler::handleActionLinkClicked));
+        headerBar.setAlignItems(FlexComponent.Alignment.CENTER);
+        headerBar.setWidthFull();
+        headerBar.setSpacing(true);
+        headerBar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
+        addToNavbar(headerBar);
+
+        pageContent.setWidthFull();
+        pageContent.addClassNames(LumoUtility.Padding.LARGE);
         setContent(pageContent);
         renderHomepage();
     }
@@ -134,6 +153,11 @@ public class MainViewVaa extends AppLayout
             return TableViewVaa.forDataTableInteractive(
                     DataTableInteractive.forAction(managedAction, actionResult),
                     uiContext::route);
+        }
+        // a value result (Blob/Clob/Markup/other scalar) is not a domain object,
+        // so render it as a value (download / html / text) rather than an object page.
+        if (actionResult.objSpec().isValue()) {
+            return ValueResultViewVaa.forValue(actionResult);
         }
         return handle(actionResult);
     }
