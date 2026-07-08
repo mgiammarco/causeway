@@ -25,6 +25,7 @@ import org.springframework.core.annotation.Order;
 
 import org.apache.causeway.applib.annotation.PriorityPrecedence;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
+import org.apache.causeway.core.metamodel.object.ManagedObjects;
 import org.apache.causeway.core.metamodel.object.MmTitleUtils;
 import org.apache.causeway.viewer.commons.model.components.UiComponentFactory.ComponentRequest;
 import org.apache.causeway.viewer.vaadin.ui.components.UiComponentHandlerVaa;
@@ -56,11 +57,17 @@ public class ChoiceFieldFactory implements UiComponentHandlerVaa {
         var comboBox = new ComboBox<ManagedObject>(request.getFriendlyName());
         comboBox.setItems(choices.toList());
         comboBox.setItemLabelGenerator(MmTitleUtils::titleOf);
-        comboBox.setValue(managedValue.getValue().getValue());
+        // an absent selection is an "empty" ManagedObject (not Java null); passed
+        // straight to the combo box, its title ("empty <logicalTypeName>") would
+        // render literally instead of leaving the field blank.
+        var currentValue = managedValue.getValue().getValue();
+        comboBox.setValue(ManagedObjects.isNullOrUnspecifiedOrEmpty(currentValue) ? null : currentValue);
         comboBox.setReadOnly(readOnly);
         if (!readOnly) {
-            comboBox.addValueChangeListener(event ->
-                    managedValue.getValue().setValue(event.getValue()));
+            comboBox.addValueChangeListener(event -> managedValue.getValue().setValue(
+                    event.getValue() != null
+                            ? event.getValue()
+                            : ManagedObject.empty(managedValue.getElementType())));
         }
         return comboBox;
     }

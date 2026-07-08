@@ -50,6 +50,7 @@ import org.apache.causeway.core.metamodel.interactions.managed.ManagedAction;
 import org.apache.causeway.core.metamodel.interactions.managed.PropertyInteraction;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
 import org.apache.causeway.core.metamodel.object.MmTitleUtils;
+import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
 import org.apache.causeway.viewer.commons.model.components.UiComponentFactory;
 import org.apache.causeway.viewer.commons.model.decorators.DisablingDecorator.DisablingDecorationModel;
 import org.apache.causeway.viewer.commons.model.layout.UiGridLayout;
@@ -167,7 +168,20 @@ public class ObjectViewVaa extends VerticalLayout {
 
             @Override
             protected void onAction(final HasComponents container, final ActionLayoutData actionData) {
-                var interaction = ActionInteraction.start(managedObject, actionData.getId(), Where.OBJECT_FORMS);
+                onAction(container, actionData.getId());
+            }
+
+            /**
+             * Renders an action found by live metamodel lookup (an {@link ObjectAction},
+             * e.g. via {@code ManagedProperty}/{@code ManagedCollection#getAssociatedActions()})
+             * rather than one listed in a static layout.xml.
+             */
+            private void onAction(final HasComponents container, final ObjectAction objectAction) {
+                onAction(container, objectAction.getId());
+            }
+
+            private void onAction(final HasComponents container, final String actionId) {
+                var interaction = ActionInteraction.start(managedObject, actionId, Where.OBJECT_FORMS);
                 interaction.checkVisibility()
                         .getManagedAction()
                         .ifPresent(managedAction -> {
@@ -199,9 +213,13 @@ public class ObjectViewVaa extends VerticalLayout {
                                             managedProperty,
                                             DisablingDecorationModel.of(interaction))));
 
+                            // resolved live off the metamodel (not propertyData.getActions(),
+                            // which is only populated from a hand-written layout.xml) so
+                            // @ActionLayout(associateWith=...) actions show up even on an
+                            // auto-generated fallback layout.
                             var actionBar = newActionPanel(container);
-                            for (var actionData : propertyData.getActions()) {
-                                onAction(actionBar, actionData);
+                            for (ObjectAction associatedAction : managedProperty.getAssociatedActions()) {
+                                onAction(actionBar, associatedAction);
                             }
                         });
             }
@@ -214,9 +232,12 @@ public class ObjectViewVaa extends VerticalLayout {
                         .ifPresent(managedCollection -> {
                             Vaa.add(container, new H3(managedCollection.getFriendlyName()));
 
+                            // see onProperty: live lookup, not collectionData.getActions()
+                            // (XML-only), so mixin/entity actions associated via
+                            // @ActionLayout(associateWith=...) render without a layout.xml.
                             var actionBar = newActionPanel(container);
-                            for (var actionData : collectionData.getActions()) {
-                                onAction(actionBar, actionData);
+                            for (ObjectAction associatedAction : managedCollection.getAssociatedActions()) {
+                                onAction(actionBar, associatedAction);
                             }
 
                             Vaa.add(container, TableViewVaa.forDataTableInteractive(
