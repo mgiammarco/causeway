@@ -176,6 +176,11 @@ public class ObjectViewVaa extends VerticalLayout {
                 card.setWidthFull();
                 card.addClassNames(LumoUtility.Background.CONTRAST_5, LumoUtility.BorderRadius.LARGE,
                         LumoUtility.Padding.MEDIUM, LumoUtility.Margin.Bottom.MEDIUM);
+                // without this, the card's own padding (LumoUtility.Padding.MEDIUM) adds
+                // on top of its 100%-of-column width instead of being carved out of it,
+                // so the card visibly overflows into the next column (e.g. "Details" on
+                // the left bleeding under "Visits" on the right of a two-column layout).
+                card.getStyle().set("box-sizing", "border-box");
 
                 var heading = Vaa.add(card, new H2(fieldSetData.getName()));
                 heading.addClassNames(LumoUtility.FontSize.MEDIUM, LumoUtility.Margin.Bottom.SMALL);
