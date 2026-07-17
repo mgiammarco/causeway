@@ -20,15 +20,21 @@ package org.apache.causeway.viewer.vaadin.ui.components.object;
 
 import java.util.function.Consumer;
 
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasComponents;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.FlexLayout;
 import com.vaadin.flow.component.orderedlayout.FlexLayout.FlexWrap;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.theme.lumo.LumoUtility;
@@ -47,8 +53,11 @@ import org.apache.causeway.applib.layout.grid.bootstrap.BSTabGroup;
 import org.apache.causeway.core.metamodel.interactions.managed.ActionInteraction;
 import org.apache.causeway.core.metamodel.interactions.managed.CollectionInteraction;
 import org.apache.causeway.core.metamodel.interactions.managed.ManagedAction;
+import org.apache.causeway.core.metamodel.interactions.managed.ManagedProperty;
 import org.apache.causeway.core.metamodel.interactions.managed.PropertyInteraction;
+import org.apache.causeway.core.metamodel.interactions.managed.PropertyNegotiationModel;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
+import org.apache.causeway.core.metamodel.object.ManagedObjects;
 import org.apache.causeway.core.metamodel.object.MmTitleUtils;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
 import org.apache.causeway.viewer.commons.model.components.UiComponentFactory;
@@ -88,8 +97,22 @@ public class ObjectViewVaa extends VerticalLayout {
 
             @Override
             protected void onObjectTitle(final HasComponents container, final DomainObjectLayoutData domainObjectData) {
-                var h1 = Vaa.add(container, new H1(objectTitle));
-                h1.addClassNames(LumoUtility.Margin.Bottom.MEDIUM, LumoUtility.TextColor.PRIMARY);
+                // a generic per-object icon (Wicket shows a type-specific one via
+                // @DomainObjectLayout(cssClassFa=...), a Font Awesome class name with
+                // no equivalent in Vaadin's own icon set; none of this demo's domain
+                // objects declare one anyway, so a single consistent icon here gives
+                // the same "not just bare text" visual weight without a brittle
+                // fa-class-name-to-VaadinIcon mapping for a facet nothing uses yet).
+                var icon = VaadinIcon.RECORDS.create();
+                icon.setSize("1.25em");
+                icon.addClassNames(LumoUtility.TextColor.PRIMARY);
+
+                var h1 = new H1(objectTitle);
+                h1.addClassNames(LumoUtility.Margin.NONE, LumoUtility.TextColor.PRIMARY);
+
+                var titleRow = Vaa.add(container, new HorizontalLayout(icon, h1));
+                titleRow.setAlignItems(FlexComponent.Alignment.CENTER);
+                titleRow.addClassNames(LumoUtility.Margin.Bottom.MEDIUM);
             }
 
             @Override
@@ -209,17 +232,26 @@ public class ObjectViewVaa extends VerticalLayout {
                         .getManagedProperty()
                         .ifPresent(managedProperty -> {
                             interaction.checkUsability();
+                            var disablingModel = DisablingDecorationModel.of(interaction);
                             var propertyNegotiation = managedProperty.startNegotiation();
                             // persist edits: whenever a field writes a new value into the
                             // negotiation, submit it into the owning object (within the
                             // request's interaction/transaction).
                             propertyNegotiation.getValue().addListener((observable, oldValue, newValue) ->
                                     propertyNegotiation.submit());
-                            Vaa.add(container, uiComponentFactory.componentFor(
+                            var editorComponent = uiComponentFactory.componentFor(
                                     new UiComponentFactory.ComponentRequest(
-                                            propertyNegotiation,
-                                            managedProperty,
-                                            DisablingDecorationModel.of(interaction))));
+                                            propertyNegotiation, managedProperty, disablingModel));
+
+                            // editable properties default to a compact read-only view (a
+                            // value "chip" + a pencil icon), only swapping in the actual
+                            // input widget once the user asks to edit — rather than every
+                            // property looking like an always-open form field. A disabled
+                            // property (no veto == editable) is left exactly as the factory
+                            // rendered it (already shown in its own disabled/faded style).
+                            Vaa.add(container, disablingModel.isEmpty()
+                                    ? newPropertyViewEditToggle(managedProperty, propertyNegotiation, editorComponent)
+                                    : editorComponent);
 
                             // resolved live off the metamodel (not propertyData.getActions(),
                             // which is only populated from a hand-written layout.xml) so
@@ -230,6 +262,63 @@ public class ObjectViewVaa extends VerticalLayout {
                                 onAction(actionBar, associatedAction);
                             }
                         });
+            }
+
+            /**
+             * Wraps an already-built editable field: a compact read view (label +
+             * value "chip") shown by default, with a pencil button that reveals the
+             * real editor widget in its place. Mirrors the Wicket viewer's
+             * view-mode-by-default property rendering, rather than every property
+             * presenting as a permanently-open input.
+             */
+            private Component newPropertyViewEditToggle(
+                    final ManagedProperty managedProperty,
+                    final PropertyNegotiationModel propertyNegotiation,
+                    final Component editorComponent) {
+
+                var labelSpan = new Span(managedProperty.getFriendlyName());
+                labelSpan.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY);
+
+                var valueChip = new Span();
+                valueChip.addClassNames(LumoUtility.Background.CONTRAST_10, LumoUtility.Padding.Horizontal.SMALL,
+                        LumoUtility.Padding.Vertical.XSMALL, LumoUtility.BorderRadius.MEDIUM,
+                        LumoUtility.FontSize.SMALL);
+                Runnable refreshChip = () -> {
+                    var value = propertyNegotiation.getValue().getValue();
+                    // an unset property is an "empty" ManagedObject (not Java null);
+                    // titleOf() on it returns its internal diagnostic representation
+                    // (e.g. "empty java.lang.String") rather than a blank display —
+                    // same class of bug as ChoiceFieldFactory's empty-selection leak.
+                    var text = ManagedObjects.isNullOrUnspecifiedOrEmpty(value) ? "" : MmTitleUtils.titleOf(value);
+                    valueChip.setText(text.isBlank() ? "(none)" : text);
+                };
+                refreshChip.run();
+                propertyNegotiation.getValue().addListener((observable, oldValue, newValue) -> refreshChip.run());
+
+                var editIcon = new Button(VaadinIcon.PENCIL.create());
+                editIcon.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
+                editIcon.getElement().setAttribute("aria-label", "Edit " + managedProperty.getFriendlyName());
+
+                var valueRow = new HorizontalLayout(valueChip, editIcon);
+                valueRow.setPadding(false);
+                valueRow.setSpacing(true);
+                valueRow.setAlignItems(FlexComponent.Alignment.CENTER);
+
+                var displayGroup = new VerticalLayout(labelSpan, valueRow);
+                displayGroup.setPadding(false);
+                displayGroup.setSpacing(false);
+                displayGroup.addClassNames(LumoUtility.Margin.Bottom.SMALL);
+
+                editorComponent.setVisible(false);
+                editIcon.addClickListener(event -> {
+                    displayGroup.setVisible(false);
+                    editorComponent.setVisible(true);
+                });
+
+                var wrapper = new VerticalLayout(displayGroup, editorComponent);
+                wrapper.setPadding(false);
+                wrapper.setSpacing(false);
+                return wrapper;
             }
 
             @Override

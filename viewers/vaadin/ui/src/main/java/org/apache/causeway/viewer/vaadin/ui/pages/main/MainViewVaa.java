@@ -19,18 +19,21 @@
 package org.apache.causeway.viewer.vaadin.ui.pages.main;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.theme.lumo.Lumo;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 
 import org.apache.causeway.core.metamodel.object.MmTitleUtils;
@@ -135,8 +138,9 @@ public class MainViewVaa extends AppLayout
 
         // flexible gap pushes the secondary/tertiary (utility) menus to the right
         var spacer = new Div();
+        var themeToggle = newThemeToggle();
 
-        var headerBar = new HorizontalLayout(title, primaryMenu, spacer, secondaryMenu, tertiaryMenu);
+        var headerBar = new HorizontalLayout(title, primaryMenu, spacer, secondaryMenu, tertiaryMenu, themeToggle);
         headerBar.setAlignItems(FlexComponent.Alignment.CENTER);
         headerBar.setWidthFull();
         headerBar.expand(spacer);
@@ -191,6 +195,28 @@ public class MainViewVaa extends AppLayout
     }
 
     // -- helpers
+
+    /**
+     * Closest Vaadin/Lumo equivalent to Wicket's live Bootswatch theme-switcher
+     * footer: Lumo ships exactly two built-in variants (light/dark, no separate
+     * theme files to swap), toggled via the page's theme attribute list.
+     */
+    private Button newThemeToggle() {
+        var button = new Button(VaadinIcon.MOON_O.create());
+        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        button.getElement().setAttribute("aria-label", "Toggle dark theme");
+        button.addClickListener(event -> {
+            var themeList = UI.getCurrent().getElement().getThemeList();
+            if (themeList.contains(Lumo.DARK)) {
+                themeList.remove(Lumo.DARK);
+                button.setIcon(VaadinIcon.MOON_O.create());
+            } else {
+                themeList.add(Lumo.DARK);
+                button.setIcon(VaadinIcon.SUN_O.create());
+            }
+        });
+        return button;
+    }
 
     private void replaceContent(final Component component) {
         pageContent.removeAll();

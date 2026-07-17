@@ -18,6 +18,7 @@
  */
 package org.apache.causeway.viewer.vaadin.ui.components.collection;
 
+import java.util.IdentityHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -25,7 +26,10 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.provider.ListDataProvider;
 
 import org.apache.causeway.core.metamodel.object.ManagedObject;
 import org.apache.causeway.core.metamodel.object.MmTitleUtils;
@@ -63,20 +67,23 @@ public class TableViewVaa extends VerticalLayout {
             return;
         }
 
+        var rowsList = rows.toList();
+        var columns = dataTable.dataColumnsObservable().getValue();
+
         var grid = new Grid<DataRow>();
         // fit the parent's width (e.g. a 50/50 layout column) with its own internal
         // horizontal scrollbar if the auto-widened columns don't all fit, rather than
         // sizing to the sum of the columns' content width and overflowing the parent.
         grid.setWidthFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_COMPACT);
-        add(grid);
 
         grid.addColumn(row -> MmTitleUtils.titleOf(row.rowElement()))
                 .setHeader("");
 
-        dataTable.dataColumnsObservable().getValue().forEach(column ->
+        columns.forEach(column ->
                 grid.addColumn(row -> stringifyCell(row, column))
-                        .setHeader(column.columnFriendlyNameObservable().getValue()));
+                        .setHeader(column.columnFriendlyNameObservable().getValue())
+                        .setSortable(true));
 
         grid.getColumns().forEach(column -> column.setAutoWidth(true));
 
@@ -84,8 +91,34 @@ public class TableViewVaa extends VerticalLayout {
             grid.addItemClickListener(event -> onRowSelect.accept(event.getItem().rowElement()));
         }
 
-        grid.setItems(rows.toList());
+        // a plain-text index of each row (title + every visible cell), so a single
+        // search box can filter across all columns at once, rather than needing a
+        // per-column filter row.
+        var searchTextByRow = new IdentityHashMap<DataRow, String>();
+        rowsList.forEach(row -> {
+            var text = new StringBuilder(MmTitleUtils.titleOf(row.rowElement()));
+            columns.forEach(column -> text.append(' ').append(stringifyCell(row, column)));
+            searchTextByRow.put(row, text.toString().toLowerCase());
+        });
+
+        var dataProvider = new ListDataProvider<>(rowsList);
+        grid.setItems(dataProvider);
         grid.setColumnReorderingAllowed(true);
+
+        if (rowsList.size() > 1) {
+            var searchField = new TextField();
+            searchField.setPlaceholder("Search");
+            searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
+            searchField.setClearButtonVisible(true);
+            searchField.setWidth("16em");
+            searchField.addValueChangeListener(event -> {
+                var term = event.getValue() == null ? "" : event.getValue().strip().toLowerCase();
+                dataProvider.setFilter(row -> term.isEmpty() || searchTextByRow.get(row).contains(term));
+            });
+            add(searchField);
+        }
+
+        add(grid);
         setWidthFull();
     }
 
