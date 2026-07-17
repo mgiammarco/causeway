@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 
@@ -63,6 +64,11 @@ public class TableViewVaa extends VerticalLayout {
         }
 
         var grid = new Grid<DataRow>();
+        // fit the parent's width (e.g. a 50/50 layout column) with its own internal
+        // horizontal scrollbar if the auto-widened columns don't all fit, rather than
+        // sizing to the sum of the columns' content width and overflowing the parent.
+        grid.setWidthFull();
+        grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_COMPACT);
         add(grid);
 
         grid.addColumn(row -> MmTitleUtils.titleOf(row.rowElement()))

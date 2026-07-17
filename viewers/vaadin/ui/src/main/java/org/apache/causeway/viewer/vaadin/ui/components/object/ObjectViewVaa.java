@@ -89,7 +89,7 @@ public class ObjectViewVaa extends VerticalLayout {
             @Override
             protected void onObjectTitle(final HasComponents container, final DomainObjectLayoutData domainObjectData) {
                 var h1 = Vaa.add(container, new H1(objectTitle));
-                h1.addClassNames(LumoUtility.Margin.Bottom.MEDIUM);
+                h1.addClassNames(LumoUtility.Margin.Bottom.MEDIUM, LumoUtility.TextColor.PRIMARY);
             }
 
             @Override
@@ -105,11 +105,19 @@ public class ObjectViewVaa extends VerticalLayout {
                 var uiCol = Vaa.add(container, new VerticalLayout());
                 uiCol.setPadding(false);
                 uiCol.setSpacing(false);
-                if (container instanceof FlexLayout flexLayout) {
-                    flexLayout.setFlexGrow(bsCol.getSpan(), uiCol);
-                }
-                // fill the available width so the enclosed form can use multiple columns
-                uiCol.setWidthFull();
+                // Bootstrap-style 12-column span, as a percentage of the row's width.
+                // A fixed setWidthFull() here would make every column claim 100% and,
+                // combined with the row's flex-wrap, force side-by-side columns (e.g. a
+                // two-column bs3:row) to stack vertically instead.
+                var widthPercent = (bsCol.getSpan() * 100.0) / 12;
+                uiCol.getStyle()
+                        .set("flex", "0 0 " + widthPercent + "%")
+                        .set("max-width", widthPercent + "%")
+                        .set("box-sizing", "border-box")
+                        // flex items default to min-width:auto, which refuses to shrink
+                        // below the content's preferred size (e.g. a wide Grid) — without
+                        // this, a table inside a column escapes the column's percentage width.
+                        .set("min-width", "0");
                 return uiCol;
             }
 
@@ -251,11 +259,11 @@ public class ObjectViewVaa extends VerticalLayout {
                 .ifPresentOrElse(
                         uiGridLayout -> uiGridLayout.visit(gridVisitor),
                         () -> add(new H1(objectTitle)));
-        // present the object as a tidy, readable centred column rather than a
-        // full-bleed form with a large empty right-hand side.
+        // full available width: a fixed cap here would squeeze any layout.xml that
+        // declares side-by-side columns (e.g. a 6/6 split) back into a single narrow
+        // stack. Each fieldset already renders as a bounded card (see newFieldSet),
+        // so a single-column object doesn't read as a full-bleed, edge-to-edge form.
         setWidthFull();
-        setMaxWidth("60em");
-        getStyle().set("margin-inline", "auto");
         setPadding(false);
     }
 }
