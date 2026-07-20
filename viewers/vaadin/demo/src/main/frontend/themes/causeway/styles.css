@@ -1,0 +1,20 @@
+/*
+ * Custom Lumo theme for the Vaadin viewer demo: a brand color, slightly
+ * rounder corners, and a tinted canvas so the white/card surfaces the
+ * viewer renders (fieldset cards, grids) read as distinct layers instead
+ * of blending into a flat white page.
+ */
+html {
+  --lumo-primary-color: #4f46e5;
+  --lumo-primary-color-50pct: rgba(79, 70, 229, 0.5);
+  --lumo-primary-color-10pct: rgba(79, 70, 229, 0.1);
+  --lumo-primary-text-color: #4338ca;
+  --lumo-primary-contrast-color: #ffffff;
+
+  --lumo-border-radius-m: 0.5rem;
+  --lumo-border-radius-l: 0.75rem;
+}
+
+body {
+  background: var(--lumo-contrast-5pct);
+}

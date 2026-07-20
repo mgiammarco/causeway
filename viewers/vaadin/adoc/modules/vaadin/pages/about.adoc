@@ -1,0 +1,72 @@
+= Vaadin Viewer
+
+WARNING: This viewer is experimental. It renders domain objects, collections and
+action prompts using Vaadin Flow, reusing the viewer-agnostic models from
+`causeway-viewer-commons`.
+
+== Enabling
+
+Import `CausewayModuleViewerVaadinViewer` from your application manifest:
+
+[source,java]
+----
+@Configuration
+@Import({
+    CausewayModuleCoreRuntimeServices.class,
+    CausewayModuleViewerVaadinViewer.class,
+    // plus persistence + security modules of your choice
+})
+public class AppManifest { }
+----
+
+NOTE: `vaadin-spring-boot-starter` transitively brings Hilla auto-configurations;
+if your application does not use Hilla, exclude them via
+`spring.autoconfigure.exclude` (see `VaadinModuleContextLoadsTest` for the list).
+
+== Scope
+
+What works (all browser-verified against the demo):
+
+* Login / logout via Causeway's own `AuthenticationManager`
+* Served at the application root (`/`) with the standard root URL mapping
+* Menubar built from the domain-service metamodel
+* Domain-object page driven by the bootstrap grid layout (fieldsets, tab groups)
+* Editable fields per value type: text (`String`), numbers / `BigDecimal` /
+  other scalars (text field), `boolean` (checkbox), `LocalDate` / `LocalDateTime`
+  (date / date-time picker), and choices / enums (combo box)
+* Object references: choice-backed references and enums as a combo box, and
+  free references (entity / view-model) as a combo box populated from the
+  repository
+* `Markup` rendered as HTML; `Blob` / `Clob` as a download link
+* Collections rendered as a Vaadin `Grid`, with row-click drill-down to the
+  object page
+* Action invocation, including a parameter dialog for parameterised actions
+  (value and reference parameters)
+* Inline property edits are persisted (the property negotiation is submitted on
+  change, within the request's transaction)
+* Object references rendered as a combo box with server-side type-to-filter
+  (autocomplete); `Blob`/`Clob` support both download and file upload
+* Action results are handled by kind: collection → grid, object → object page,
+  value → download/HTML/text, void → notification
+* Lumo theme, application title in the navbar, and a breadcrumb of recently
+  visited objects
+* i18n via a `ResourceBundle`-backed `I18NProvider` (add
+  `translations/messages[_locale].properties` to translate)
+
+Not yet: hint persistence, theme switching (dark mode), lazy-loaded /
+multi-select grids, and object-reference autocomplete paged over very large
+result sets (currently filters the loaded set server-side).
+
+== Trying it out
+
+A standalone, runnable demo lives in `viewers/vaadin/demo` — a tiny JPA domain
+(`DemoAuthor`, `DemoBook` with a book→author reference) on an in-memory H2
+database, seeded on startup. Run it with:
+
+[source,bash]
+----
+mvn -f viewers/vaadin/demo/pom.xml spring-boot:run
+----
+
+then open `http://localhost:8080/` and sign in with any credentials (the demo
+uses the bypass security manager).
