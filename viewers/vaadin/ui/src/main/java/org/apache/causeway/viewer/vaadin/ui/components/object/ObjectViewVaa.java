@@ -36,6 +36,7 @@ import com.vaadin.flow.component.orderedlayout.FlexLayout.FlexWrap;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.tabs.TabSheetVariant;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 
 import org.apache.causeway.applib.annotation.Where;
@@ -137,7 +138,14 @@ public class ObjectViewVaa extends VerticalLayout {
                 uiCol.getStyle()
                         // flex-grow:0, flex-shrink:0 (the "0 0" in flex-basis) alone fixes
                         // the column's width — no separate max-width needed alongside it.
-                        .set("flex", "0 0 " + widthPercent + "%")
+                        // The "- var(--lumo-space-m)" / margin-inline pair below carves a
+                        // gutter out of that same percentage (self-balancing: each column
+                        // gives back exactly what it takes, regardless of how many siblings
+                        // share the row), instead of widening the row via a plain CSS gap,
+                        // which would overflow a flex-shrink:0 100%-wide row and force the
+                        // very wrapping this comment above warns against.
+                        .set("flex", "0 0 calc(" + widthPercent + "% - var(--lumo-space-m))")
+                        .set("margin-inline", "calc(var(--lumo-space-m) / 2)")
                         .set("box-sizing", "border-box")
                         // flex items default to min-width:auto, which refuses to shrink
                         // below the content's preferred size (e.g. a wide Grid) — without
@@ -159,6 +167,11 @@ public class ObjectViewVaa extends VerticalLayout {
                 var tabSheet = new TabSheet();
                 container.add(tabSheet);
                 tabSheet.setWidthFull();
+                // TabSheet pads its content area by default (--vaadin-tabsheet-padding);
+                // our own fieldset cards already carry their own padding, so left as-is a
+                // tabbed fieldset (e.g. "Identity") renders narrower per side than an
+                // untabbed sibling fieldset (e.g. "Contact") in the same row.
+                tabSheet.addThemeVariants(TabSheetVariant.LUMO_NO_PADDING);
                 return tabSheet;
             }
 
@@ -166,6 +179,10 @@ public class ObjectViewVaa extends VerticalLayout {
             protected HasComponents newTab(final TabSheet tabSheet, final BSTab tabData) {
                 var tabContent = new VerticalLayout();
                 tabContent.setWidthFull();
+                // VerticalLayout pads itself by default on top of TabSheet's own content
+                // inset, so a fieldset inside a tab ends up ~2x narrower per side than an
+                // untabbed sibling fieldset in the same row (e.g. "Identity" vs "Contact").
+                tabContent.setPadding(false);
                 tabSheet.add(tabData.getName(), tabContent);
                 return tabContent;
             }
