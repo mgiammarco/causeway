@@ -18,7 +18,6 @@
  */
 package org.apache.causeway.viewer.vaadin.ui.components.collection;
 
-import java.util.IdentityHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -31,6 +30,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.provider.ListDataProvider;
 
+import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
 import org.apache.causeway.core.metamodel.object.MmTitleUtils;
 import org.apache.causeway.core.metamodel.tabular.DataColumn;
@@ -45,6 +45,14 @@ import org.apache.causeway.core.metamodel.tabular.DataTableInteractive;
 public class TableViewVaa extends VerticalLayout {
 
     private static final long serialVersionUID = 1L;
+
+    /**
+     * Above this row count, a fixed-height scrollable grid (Vaadin's default) is
+     * cheaper than rendering every row into the DOM; at or below it, sizing the
+     * grid to its content (no dead scroll space, no arbitrary fixed height next
+     * to content-hugging fieldset cards) reads far better.
+     */
+    private static final int ALL_ROWS_VISIBLE_THRESHOLD = 15;
 
     public static Component forDataTableInteractive(final DataTableInteractive dataTable) {
         return new TableViewVaa(dataTable, null);
@@ -76,30 +84,30 @@ public class TableViewVaa extends VerticalLayout {
         // sizing to the sum of the columns' content width and overflowing the parent.
         grid.setWidthFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_COMPACT);
+        if (rowsList.size() <= ALL_ROWS_VISIBLE_THRESHOLD) {
+            grid.setAllRowsVisible(true);
+        }
 
         grid.addColumn(row -> MmTitleUtils.titleOf(row.rowElement()))
                 .setHeader("");
 
-        columns.forEach(column ->
-                grid.addColumn(row -> stringifyCell(row, column))
-                        .setHeader(column.columnFriendlyNameObservable().getValue())
-                        .setSortable(true));
+        columns.forEach(column -> {
+            var gridColumn = grid.addColumn(row -> stringifyCell(row, column))
+                    .setHeader(column.columnFriendlyNameObservable().getValue())
+                    .setSortable(true);
+            // the ValueProvider above returns the cell's *displayed* String, so a
+            // plain setSortable(true) would sort numbers/dates lexicographically
+            // ("10" before "2"). Compare the underlying value when there's exactly
+            // one comparable cell element; fall back to the displayed text otherwise
+            // (e.g. multi-valued cells, or a value type with no natural ordering).
+            gridColumn.setComparator((rowA, rowB) -> compareCells(rowA, rowB, column));
+        });
 
         grid.getColumns().forEach(column -> column.setAutoWidth(true));
 
         if (onRowSelect != null) {
             grid.addItemClickListener(event -> onRowSelect.accept(event.getItem().rowElement()));
         }
-
-        // a plain-text index of each row (title + every visible cell), so a single
-        // search box can filter across all columns at once, rather than needing a
-        // per-column filter row.
-        var searchTextByRow = new IdentityHashMap<DataRow, String>();
-        rowsList.forEach(row -> {
-            var text = new StringBuilder(MmTitleUtils.titleOf(row.rowElement()));
-            columns.forEach(column -> text.append(' ').append(stringifyCell(row, column)));
-            searchTextByRow.put(row, text.toString().toLowerCase());
-        });
 
         var dataProvider = new ListDataProvider<>(rowsList);
         grid.setItems(dataProvider);
@@ -111,9 +119,12 @@ public class TableViewVaa extends VerticalLayout {
             searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
             searchField.setClearButtonVisible(true);
             searchField.setWidth("16em");
+            // matched on the fly per keystroke rather than a precomputed per-row
+            // index: at this data scale that's cheaper than eagerly re-stringifying
+            // every cell (the grid's own lazy renderer already does that per cell).
             searchField.addValueChangeListener(event -> {
                 var term = event.getValue() == null ? "" : event.getValue().strip().toLowerCase();
-                dataProvider.setFilter(row -> term.isEmpty() || searchTextByRow.get(row).contains(term));
+                dataProvider.setFilter(row -> term.isEmpty() || matchesSearch(row, columns, term));
             });
             add(searchField);
         }
@@ -142,5 +153,29 @@ public class TableViewVaa extends VerticalLayout {
             return named.name();
         }
         return MmTitleUtils.titleOf(cellElement);
+    }
+
+    /** The cell's single underlying pojo, or {@code null} if empty/multi-valued. */
+    private static Object singleCellPojo(final DataRow row, final DataColumn column) {
+        var elements = row.getCellElementsForColumn(column).stream().toList();
+        if (elements.size() != 1 || elements.get(0) == null) {
+            return null;
+        }
+        return elements.get(0).getPojo();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static int compareCells(final DataRow rowA, final DataRow rowB, final DataColumn column) {
+        var pojoA = singleCellPojo(rowA, column);
+        var pojoB = singleCellPojo(rowB, column);
+        if (pojoA instanceof Comparable<?> && pojoB != null && pojoA.getClass().isInstance(pojoB)) {
+            return ((Comparable<Object>) pojoA).compareTo(pojoB);
+        }
+        return stringifyCell(rowA, column).compareToIgnoreCase(stringifyCell(rowB, column));
+    }
+
+    private static boolean matchesSearch(final DataRow row, final Can<DataColumn> columns, final String term) {
+        return MmTitleUtils.titleOf(row.rowElement()).toLowerCase().contains(term)
+                || columns.stream().anyMatch(column -> stringifyCell(row, column).toLowerCase().contains(term));
     }
 }

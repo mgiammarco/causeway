@@ -80,6 +80,15 @@
                     </bs3:row>
                 </bs3:col>
             </bs3:row>
+            <!-- required even though pets/visits are both already placed explicitly
+                 above: Causeway's grid validation (GridServiceDefault) rejects a
+                 layout.xml with no column and no unreferencedCollections tabgroup at
+                 all ("no safety net for any collection the layout doesn't name"),
+                 falling back to the auto-generated grid for the whole page — removing
+                 this as "dead weight" (an earlier pass here did exactly that) silently
+                 breaks the entire custom layout, not just this one empty tab strip.
+                 Confirmed by GridServiceDefault's own error: "No column and also no
+                 tabgroup found with the 'unreferencedCollections' attribute set". -->
             <bs3:tabGroup unreferencedCollections="true">
             </bs3:tabGroup>
         </bs3:col>

@@ -1,0 +1,6 @@
+/* Crisp separation between the navbar and page content, instead of the
+   default flat white-on-white with no boundary. */
+[part="navbar"] {
+  background: var(--lumo-base-color);
+  box-shadow: 0 1px 0 0 var(--lumo-contrast-10pct);
+}

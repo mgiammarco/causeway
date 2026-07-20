@@ -69,19 +69,12 @@
     </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-            <!-- .layout.xml files live alongside their domain classes -->
-            <resource>
-                <filtering>false</filtering>
-                <directory>src/main/java</directory>
-                <includes>
-                    <include>**/*.layout.xml</include>
-                </includes>
-            </resource>
-        </resources>
+        <!-- no explicit <resources> here: causeway-parent's own <resources> block
+             already copies src/main/resources plus src/main/java/** (excluding
+             *.java) onto the classpath, which is exactly what .layout.xml files
+             co-located with their domain classes need — an override here would
+             only narrow that to *.layout.xml and silently stop copying any other
+             future non-.java resource added under src/main/java. -->
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

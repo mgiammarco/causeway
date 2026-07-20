@@ -50,6 +50,7 @@ import org.apache.causeway.core.metamodel.tabular.DataTableInteractive;
 import org.apache.causeway.viewer.commons.applib.services.header.HeaderUiService;
 import org.apache.causeway.viewer.vaadin.model.context.MemberInvocationHandler;
 import org.apache.causeway.viewer.vaadin.model.context.UiContextVaa;
+import org.apache.causeway.viewer.vaadin.model.util.Vaa;
 import org.apache.causeway.viewer.vaadin.ui.components.UiComponentFactoryVaa;
 import org.apache.causeway.viewer.vaadin.ui.components.collection.TableViewVaa;
 import org.apache.causeway.viewer.vaadin.ui.components.object.ObjectViewVaa;
@@ -145,6 +146,10 @@ public class MainViewVaa extends AppLayout
         headerBar.setWidthFull();
         headerBar.expand(spacer);
         headerBar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
+        // setWidthFull() + Padding.* without this adds the padding on top of 100%
+        // width instead of carving it out — the same recipe already proven to
+        // overflow once in ObjectViewVaa's fieldset card.
+        headerBar.getStyle().set("box-sizing", "border-box");
         addToNavbar(headerBar);
 
         breadcrumbBar.setSpacing(false);
@@ -155,6 +160,7 @@ public class MainViewVaa extends AppLayout
 
         pageContent.setWidthFull();
         pageContent.addClassNames(LumoUtility.Padding.LARGE);
+        pageContent.getStyle().set("box-sizing", "border-box");
 
         var contentWrap = new VerticalLayout(breadcrumbBar, pageContent);
         contentWrap.setPadding(false);
@@ -202,9 +208,7 @@ public class MainViewVaa extends AppLayout
      * theme files to swap), toggled via the page's theme attribute list.
      */
     private Button newThemeToggle() {
-        var button = new Button(VaadinIcon.MOON_O.create());
-        button.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        button.getElement().setAttribute("aria-label", "Toggle dark theme");
+        var button = Vaa.newIconButton(VaadinIcon.MOON_O, "Toggle dark theme");
         button.addClickListener(event -> {
             var themeList = UI.getCurrent().getElement().getThemeList();
             if (themeList.contains(Lumo.DARK)) {

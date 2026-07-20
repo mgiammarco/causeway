@@ -43,7 +43,7 @@ import org.apache.causeway.viewer.vaadin.ui.pages.login.VaadinLoginView;
  * wrapper, not by this guard.
  */
 @Component
-@Theme(variant = Lumo.LIGHT)
+@Theme(value = "causeway", variant = Lumo.LIGHT)
 public class VaadinAuthenticationHandler
         implements AppShellConfigurator, VaadinServiceInitListener {
 

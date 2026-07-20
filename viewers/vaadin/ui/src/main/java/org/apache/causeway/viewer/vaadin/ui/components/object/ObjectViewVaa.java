@@ -19,11 +19,10 @@
 package org.apache.causeway.viewer.vaadin.ui.components.object;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasComponents;
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep;
 import com.vaadin.flow.component.html.H1;
@@ -50,6 +49,9 @@ import org.apache.causeway.applib.layout.grid.bootstrap.BSCol;
 import org.apache.causeway.applib.layout.grid.bootstrap.BSRow;
 import org.apache.causeway.applib.layout.grid.bootstrap.BSTab;
 import org.apache.causeway.applib.layout.grid.bootstrap.BSTabGroup;
+import org.apache.causeway.applib.value.Blob;
+import org.apache.causeway.applib.value.Clob;
+import org.apache.causeway.commons.binding.ChangeListener;
 import org.apache.causeway.core.metamodel.interactions.managed.ActionInteraction;
 import org.apache.causeway.core.metamodel.interactions.managed.CollectionInteraction;
 import org.apache.causeway.core.metamodel.interactions.managed.ManagedAction;
@@ -57,7 +59,6 @@ import org.apache.causeway.core.metamodel.interactions.managed.ManagedProperty;
 import org.apache.causeway.core.metamodel.interactions.managed.PropertyInteraction;
 import org.apache.causeway.core.metamodel.interactions.managed.PropertyNegotiationModel;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
-import org.apache.causeway.core.metamodel.object.ManagedObjects;
 import org.apache.causeway.core.metamodel.object.MmTitleUtils;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
 import org.apache.causeway.viewer.commons.model.components.UiComponentFactory;
@@ -134,8 +135,9 @@ public class ObjectViewVaa extends VerticalLayout {
                 // two-column bs3:row) to stack vertically instead.
                 var widthPercent = (bsCol.getSpan() * 100.0) / 12;
                 uiCol.getStyle()
+                        // flex-grow:0, flex-shrink:0 (the "0 0" in flex-basis) alone fixes
+                        // the column's width — no separate max-width needed alongside it.
                         .set("flex", "0 0 " + widthPercent + "%")
-                        .set("max-width", widthPercent + "%")
                         .set("box-sizing", "border-box")
                         // flex items default to min-width:auto, which refuses to shrink
                         // below the content's preferred size (e.g. a wide Grid) — without
@@ -174,7 +176,12 @@ public class ObjectViewVaa extends VerticalLayout {
                 // two-column responsive form for its properties.
                 var card = Vaa.add(container, new com.vaadin.flow.component.html.Div());
                 card.setWidthFull();
-                card.addClassNames(LumoUtility.Background.CONTRAST_5, LumoUtility.BorderRadius.LARGE,
+                // a bordered, subtly-elevated white card reads as a distinct layer against
+                // the (now tinted) page canvas — a flat CONTRAST_5 fill blended into the
+                // background and gave every fieldset the same flat, cardless look.
+                card.addClassNames(LumoUtility.Background.BASE, LumoUtility.Border.ALL,
+                        LumoUtility.BorderColor.CONTRAST_10, LumoUtility.BoxShadow.SMALL,
+                        LumoUtility.BorderRadius.LARGE,
                         LumoUtility.Padding.MEDIUM, LumoUtility.Margin.Bottom.MEDIUM);
                 // without this, the card's own padding (LumoUtility.Padding.MEDIUM) adds
                 // on top of its 100%-of-column width instead of being carved out of it,
@@ -242,21 +249,30 @@ public class ObjectViewVaa extends VerticalLayout {
                             // persist edits: whenever a field writes a new value into the
                             // negotiation, submit it into the owning object (within the
                             // request's interaction/transaction).
-                            propertyNegotiation.getValue().addListener((observable, oldValue, newValue) ->
-                                    propertyNegotiation.submit());
-                            var editorComponent = uiComponentFactory.componentFor(
+                            ChangeListener<ManagedObject> submitListener = (observable, oldValue, newValue) ->
+                                    propertyNegotiation.submit();
+                            propertyNegotiation.getValue().addListener(submitListener);
+
+                            Supplier<Component> editorSupplier = () -> uiComponentFactory.componentFor(
                                     new UiComponentFactory.ComponentRequest(
                                             propertyNegotiation, managedProperty, disablingModel));
 
                             // editable properties default to a compact read-only view (a
-                            // value "chip" + a pencil icon), only swapping in the actual
-                            // input widget once the user asks to edit — rather than every
-                            // property looking like an always-open form field. A disabled
-                            // property (no veto == editable) is left exactly as the factory
-                            // rendered it (already shown in its own disabled/faded style).
-                            Vaa.add(container, disablingModel.isEmpty()
-                                    ? newPropertyViewEditToggle(managedProperty, propertyNegotiation, editorComponent)
-                                    : editorComponent);
+                            // value "chip" + a pencil icon), only building/swapping in the
+                            // actual input widget once the user asks to edit — rather than
+                            // every property looking like an always-open form field. A
+                            // disabled property (no veto == editable) is left exactly as the
+                            // factory rendered it (already shown in its own disabled/faded
+                            // style). Blob/Clob's factory already manages its own view (a
+                            // download link shown unconditionally, an Upload appended only
+                            // when editable) — wrapping that in the toggle would hide the
+                            // download link itself behind the "edit" pencil, so it's excluded.
+                            var added = disablingModel.isEmpty() && !isBlobOrClob(managedProperty)
+                                    ? newPropertyViewEditToggle(managedProperty, propertyNegotiation, editorSupplier)
+                                    : editorSupplier.get();
+                            Vaa.add(container, added);
+                            added.addDetachListener(event ->
+                                    propertyNegotiation.getValue().removeListener(submitListener));
 
                             // resolved live off the metamodel (not propertyData.getActions(),
                             // which is only populated from a hand-written layout.xml) so
@@ -269,17 +285,25 @@ public class ObjectViewVaa extends VerticalLayout {
                         });
             }
 
+            private boolean isBlobOrClob(final ManagedProperty managedProperty) {
+                var correspondingClass = managedProperty.getElementType().getCorrespondingClass();
+                return Blob.class.equals(correspondingClass) || Clob.class.equals(correspondingClass);
+            }
+
             /**
-             * Wraps an already-built editable field: a compact read view (label +
-             * value "chip") shown by default, with a pencil button that reveals the
-             * real editor widget in its place. Mirrors the Wicket viewer's
-             * view-mode-by-default property rendering, rather than every property
-             * presenting as a permanently-open input.
+             * Wraps an editable field: a compact read view (label + value "chip")
+             * shown by default, with a pencil button that builds the real editor
+             * widget on first click and toggles between the two on each further
+             * click (rather than a one-way reveal that leaves the property stuck
+             * open). The editor is built lazily — not at page-load time — so a
+             * reference/choice property's ComboBox (which may eagerly fetch all
+             * instances of the referenced type) isn't populated for a widget the
+             * user never opens.
              */
             private Component newPropertyViewEditToggle(
                     final ManagedProperty managedProperty,
                     final PropertyNegotiationModel propertyNegotiation,
-                    final Component editorComponent) {
+                    final Supplier<Component> editorSupplier) {
 
                 var labelSpan = new Span(managedProperty.getFriendlyName());
                 labelSpan.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY);
@@ -289,40 +313,55 @@ public class ObjectViewVaa extends VerticalLayout {
                         LumoUtility.Padding.Vertical.XSMALL, LumoUtility.BorderRadius.MEDIUM,
                         LumoUtility.FontSize.SMALL);
                 Runnable refreshChip = () -> {
-                    var value = propertyNegotiation.getValue().getValue();
-                    // an unset property is an "empty" ManagedObject (not Java null);
-                    // titleOf() on it returns its internal diagnostic representation
-                    // (e.g. "empty java.lang.String") rather than a blank display —
-                    // same class of bug as ChoiceFieldFactory's empty-selection leak.
-                    var text = ManagedObjects.isNullOrUnspecifiedOrEmpty(value) ? "" : MmTitleUtils.titleOf(value);
+                    var text = Vaa.titleOfOrBlank(propertyNegotiation.getValue().getValue());
                     valueChip.setText(text.isBlank() ? "(none)" : text);
                 };
                 refreshChip.run();
-                propertyNegotiation.getValue().addListener((observable, oldValue, newValue) -> refreshChip.run());
+                ChangeListener<ManagedObject> chipListener = (observable, oldValue, newValue) -> refreshChip.run();
+                propertyNegotiation.getValue().addListener(chipListener);
 
-                var editIcon = new Button(VaadinIcon.PENCIL.create());
-                editIcon.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
-                editIcon.getElement().setAttribute("aria-label", "Edit " + managedProperty.getFriendlyName());
+                // the pencil/done button lives in its own row alongside whichever of
+                // (valueChip, editor) is current, and is never itself hidden — an
+                // earlier version of this toggle hid the button along with the chip
+                // when entering edit mode, leaving no way to switch back.
+                var editIcon = Vaa.newIconButton(VaadinIcon.PENCIL, "Edit " + managedProperty.getFriendlyName());
+                var contentRow = new HorizontalLayout(valueChip, editIcon);
+                contentRow.setPadding(false);
+                contentRow.setSpacing(true);
+                contentRow.setAlignItems(FlexComponent.Alignment.CENTER);
 
-                var valueRow = new HorizontalLayout(valueChip, editIcon);
-                valueRow.setPadding(false);
-                valueRow.setSpacing(true);
-                valueRow.setAlignItems(FlexComponent.Alignment.CENTER);
-
-                var displayGroup = new VerticalLayout(labelSpan, valueRow);
-                displayGroup.setPadding(false);
-                displayGroup.setSpacing(false);
-                displayGroup.addClassNames(LumoUtility.Margin.Bottom.SMALL);
-
-                editorComponent.setVisible(false);
-                editIcon.addClickListener(event -> {
-                    displayGroup.setVisible(false);
-                    editorComponent.setVisible(true);
-                });
-
-                var wrapper = new VerticalLayout(displayGroup, editorComponent);
+                var wrapper = new VerticalLayout(labelSpan, contentRow);
                 wrapper.setPadding(false);
                 wrapper.setSpacing(false);
+                wrapper.addClassNames(LumoUtility.Margin.Bottom.SMALL);
+
+                // editor built on first click; toggled (not rebuilt) on every click after
+                var editorHolder = new Component[1];
+                var editing = new boolean[] { false };
+                editIcon.addClickListener(event -> {
+                    if (editorHolder[0] == null) {
+                        editorHolder[0] = editorSupplier.get();
+                    }
+                    editing[0] = !editing[0];
+                    contentRow.removeAll();
+                    if (editing[0]) {
+                        // the editor renders its own label, so ours would duplicate it
+                        labelSpan.setVisible(false);
+                        contentRow.add(editorHolder[0], editIcon);
+                        editIcon.setIcon(VaadinIcon.CHECK.create());
+                        editIcon.getElement().setAttribute("aria-label",
+                                "Done editing " + managedProperty.getFriendlyName());
+                    } else {
+                        refreshChip.run();
+                        labelSpan.setVisible(true);
+                        contentRow.add(valueChip, editIcon);
+                        editIcon.setIcon(VaadinIcon.PENCIL.create());
+                        editIcon.getElement().setAttribute("aria-label",
+                                "Edit " + managedProperty.getFriendlyName());
+                    }
+                });
+
+                wrapper.addDetachListener(event -> propertyNegotiation.getValue().removeListener(chipListener));
                 return wrapper;
             }
 
@@ -353,11 +392,14 @@ public class ObjectViewVaa extends VerticalLayout {
                 .ifPresentOrElse(
                         uiGridLayout -> uiGridLayout.visit(gridVisitor),
                         () -> add(new H1(objectTitle)));
-        // full available width: a fixed cap here would squeeze any layout.xml that
-        // declares side-by-side columns (e.g. a 6/6 split) back into a single narrow
-        // stack. Each fieldset already renders as a bounded card (see newFieldSet),
-        // so a single-column object doesn't read as a full-bleed, edge-to-edge form.
+        // Capped and centred, not full-bleed: a single-column object (no custom
+        // layout.xml, the common case) would otherwise hug the left edge with a
+        // large unbalanced blank area on a wide viewport. 90em is comfortably wider
+        // than this app's widest layout.xml (a 6/6 split), so multi-column pages
+        // are unaffected — the cap only kicks in on viewports wider than that.
         setWidthFull();
+        setMaxWidth("90em");
+        getStyle().set("margin-inline", "auto");
         setPadding(false);
     }
 }

@@ -32,7 +32,7 @@ import org.apache.causeway.applib.value.Blob;
 import org.apache.causeway.applib.value.Clob;
 import org.apache.causeway.applib.value.Markup;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
-import org.apache.causeway.core.metamodel.object.MmTitleUtils;
+import org.apache.causeway.viewer.vaadin.model.util.Vaa;
 
 /**
  * Renders a scalar <i>value</i> returned by an action (as opposed to a domain
@@ -58,7 +58,7 @@ public final class ValueResultViewVaa {
             div.getElement().setProperty("innerHTML", markup.html() == null ? "" : markup.html());
             layout.add(div);
         } else {
-            layout.add(new Span(MmTitleUtils.titleOf(valueResult)));
+            layout.add(new Span(Vaa.titleOfOrBlank(valueResult)));
         }
         return layout;
     }
