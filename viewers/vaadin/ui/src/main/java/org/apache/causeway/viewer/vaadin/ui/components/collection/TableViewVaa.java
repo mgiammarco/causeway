@@ -35,6 +35,7 @@ import com.vaadin.flow.data.provider.ListDataProvider;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
 import org.apache.causeway.core.metamodel.object.MmTitleUtils;
+import org.apache.causeway.viewer.vaadin.model.util.Vaa;
 import org.apache.causeway.core.metamodel.tabular.DataColumn;
 import org.apache.causeway.core.metamodel.tabular.DataRow;
 import org.apache.causeway.core.metamodel.tabular.DataTableInteractive;
@@ -103,7 +104,7 @@ public class TableViewVaa extends VerticalLayout {
                         .compareToIgnoreCase(MmTitleUtils.titleOf(rowB.rowElement())));
 
         columns.forEach(column -> {
-            var gridColumn = grid.addColumn(row -> stringifyCell(row, column))
+            var gridColumn = newCellColumn(grid, rowsList, column)
                     .setHeader(column.columnFriendlyNameObservable().getValue())
                     .setSortable(true);
             // the ValueProvider above returns the cell's *displayed* String, so a
@@ -159,11 +160,11 @@ public class TableViewVaa extends VerticalLayout {
 
     private static String stringifyCell(final DataRow row, final DataColumn column) {
         return row.getCellElementsForColumn(column).stream()
-                .map(TableViewVaa::stringifyCellElement)
+                .map(cellElement -> stringifyCellElement(cellElement, column))
                 .collect(Collectors.joining(", "));
     }
 
-    private static String stringifyCellElement(final ManagedObject cellElement) {
+    private static String stringifyCellElement(final ManagedObject cellElement, final DataColumn column) {
         if (cellElement == null || cellElement.getPojo() == null) {
             return "";
         }
@@ -176,7 +177,33 @@ public class TableViewVaa extends VerticalLayout {
         if (pojo instanceof org.apache.causeway.applib.value.NamedWithMimeType named) {
             return named.name();
         }
-        return MmTitleUtils.titleOf(cellElement);
+        // value semantics' own rendering: locale-aware dates, scaled numbers, custom value types
+        return Vaa.formattedValueOrBlank(cellElement, column.associationMetaModel());
+    }
+
+    /**
+     * A boolean column shows a check / cross icon (a light-DOM renderer, like the title
+     * column); every other column its formatted text.
+     */
+    private static Grid.Column<DataRow> newCellColumn(
+            final Grid<DataRow> grid, final java.util.List<DataRow> rows, final DataColumn column) {
+        if (isBoolean(rows, column)) {
+            return grid.addColumn(LitRenderer.<DataRow>of(
+                            "<vaadin-icon class='${item.cls}' icon='${item.icon}' title='${item.label}'></vaadin-icon>")
+                    .withProperty("cls", row -> Boolean.TRUE.equals(singleCellPojo(row, column)) ? "vaa-bool-yes" : "vaa-bool-no")
+                    .withProperty("icon", row -> Boolean.TRUE.equals(singleCellPojo(row, column)) ? "vaadin:check" : "vaadin:close-small")
+                    .withProperty("label", row -> Boolean.TRUE.equals(singleCellPojo(row, column)) ? "Yes" : "No"));
+        }
+        return grid.addColumn(row -> stringifyCell(row, column));
+    }
+
+    private static boolean isBoolean(final java.util.List<DataRow> rows, final DataColumn column) {
+        return rows.stream()
+                .map(row -> singleCellPojo(row, column))
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .map(Boolean.class::isInstance)
+                .orElse(false);
     }
 
     /** The cell's single underlying pojo, or {@code null} if empty/multi-valued. */

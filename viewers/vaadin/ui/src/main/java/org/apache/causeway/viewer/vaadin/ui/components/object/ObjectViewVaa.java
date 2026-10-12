@@ -32,6 +32,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -60,6 +61,7 @@ import org.apache.causeway.core.metamodel.interactions.managed.ManagedProperty;
 import org.apache.causeway.core.metamodel.interactions.managed.PropertyInteraction;
 import org.apache.causeway.core.metamodel.interactions.managed.PropertyNegotiationModel;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
+import org.apache.causeway.core.metamodel.object.ManagedObjects;
 import org.apache.causeway.core.metamodel.object.MmTitleUtils;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
 import org.apache.causeway.viewer.commons.model.components.UiComponentFactory;
@@ -350,7 +352,7 @@ public class ObjectViewVaa extends VerticalLayout {
                 labelSpan.addClassName("vaa-property-label");
 
                 var valueChip = newValueChip();
-                Runnable refreshChip = () -> setChipText(valueChip, propertyNegotiation);
+                Runnable refreshChip = () -> setChipText(valueChip, managedProperty, propertyNegotiation);
                 refreshChip.run();
                 ChangeListener<ManagedObject> chipListener = (observable, oldValue, newValue) -> refreshChip.run();
                 propertyNegotiation.getValue().addListener(chipListener);
@@ -416,12 +418,12 @@ public class ObjectViewVaa extends VerticalLayout {
                 labelSpan.addClassName("vaa-property-label");
 
                 var valueChip = newValueChip();
-                setChipText(valueChip, propertyNegotiation);
+                setChipText(valueChip, managedProperty, propertyNegotiation);
                 if (reason != null && !reason.isBlank()) {
                     valueChip.getElement().setAttribute("title", reason);
                 }
                 ChangeListener<ManagedObject> chipListener =
-                        (observable, oldValue, newValue) -> setChipText(valueChip, propertyNegotiation);
+                        (observable, oldValue, newValue) -> setChipText(valueChip, managedProperty, propertyNegotiation);
                 propertyNegotiation.getValue().addListener(chipListener);
 
                 var contentRow = new Div(valueChip);
@@ -438,9 +440,39 @@ public class ObjectViewVaa extends VerticalLayout {
                 return chip;
             }
 
-            private void setChipText(final Span chip, final PropertyNegotiationModel propertyNegotiation) {
-                var text = Vaa.titleOfOrBlank(propertyNegotiation.getValue().getValue());
-                chip.setText(text.isBlank() ? "(none)" : text);
+            /**
+             * The chip shows the value the way its type is meant to be read: formatted by the
+             * value semantics (dates, numbers, custom value types), a check/cross icon for a
+             * boolean, a mailto link for an email address; anything else by its title.
+             */
+            private void setChipText(
+                    final Span chip,
+                    final ManagedProperty managedProperty,
+                    final PropertyNegotiationModel propertyNegotiation) {
+                chip.removeAll();
+                var value = propertyNegotiation.getValue().getValue();
+                if (ManagedObjects.isNullOrUnspecifiedOrEmpty(value)) {
+                    chip.setText("(none)");
+                    return;
+                }
+                if (value.getPojo() instanceof Boolean bool) {
+                    var icon = (bool ? VaadinIcon.CHECK : VaadinIcon.CLOSE_SMALL).create();
+                    icon.addClassName(bool ? "vaa-bool-yes" : "vaa-bool-no");
+                    var label = bool ? "Yes" : "No";
+                    icon.getElement().setAttribute("aria-hidden", "true");
+                    chip.add(icon, new Span(label));
+                    chip.addClassName("vaa-chip-bool");
+                    return;
+                }
+                chip.removeClassName("vaa-chip-bool");
+                var text = Vaa.formattedValueOrBlank(value, managedProperty.getMetaModel());
+                if (text.isBlank()) {
+                    chip.setText("(none)");
+                } else if (Vaa.looksLikeEmail(text)) {
+                    chip.add(new Anchor("mailto:" + text.strip(), text.strip()));
+                } else {
+                    chip.setText(text);
+                }
             }
 
             @Override

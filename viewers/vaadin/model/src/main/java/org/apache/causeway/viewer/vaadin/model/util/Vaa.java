@@ -25,9 +25,11 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 
+import org.apache.causeway.core.metamodel.facets.object.value.ValueFacet;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
 import org.apache.causeway.core.metamodel.object.ManagedObjects;
 import org.apache.causeway.core.metamodel.object.MmTitleUtils;
+import org.apache.causeway.core.metamodel.spec.feature.ObjectFeature;
 
 /**
  * Small static helpers for fluent Vaadin component tree construction.
@@ -71,5 +73,44 @@ public class Vaa {
         return ManagedObjects.isNullOrUnspecifiedOrEmpty(managedObject)
                 ? ""
                 : MmTitleUtils.titleOf(managedObject);
+    }
+
+    /**
+     * The value as the domain's value semantics present it (locale aware dates,
+     * numbers with their configured scale, custom value types, ...) - the same
+     * renderer the Wicket viewer uses - or blank for an unset value. Anything without
+     * value semantics (entity/view-model references, ...) is shown by its title.
+     *
+     * @param feature the property/column the value belongs to, selecting a feature
+     *                specific renderer when one is configured; may be {@code null}
+     */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public static String formattedValueOrBlank(final ManagedObject value, final ObjectFeature feature) {
+        if (ManagedObjects.isNullOrUnspecifiedOrEmpty(value)) {
+            return "";
+        }
+        var valueFacet = value.objSpec().valueFacet().orElse(null);
+        if (valueFacet != null && value.getPojo() != null) {
+            try {
+                var vf = (ValueFacet) valueFacet;
+                var renderer = feature != null
+                        ? vf.selectRendererForParamOrPropOrCollOrElseFallback(feature)
+                        : vf.selectDefaultRenderer().orElse(null);
+                if (renderer != null) {
+                    return ((org.apache.causeway.applib.value.semantics.Renderer) renderer)
+                            .titlePresentation(vf.createValueSemanticsContext(feature), value.getPojo());
+                }
+            } catch (RuntimeException e) {
+                // a value type with no usable renderer: show its title instead
+            }
+        }
+        return MmTitleUtils.titleOf(value);
+    }
+
+    private static final java.util.regex.Pattern EMAIL = java.util.regex.Pattern.compile("[^@\\s]+@[^@\\s]+\\.[^@\\s]+");
+
+    /** Whether {@code text} reads as a single email address (shown as a mailto link). */
+    public static boolean looksLikeEmail(final String text) {
+        return text != null && EMAIL.matcher(text.strip()).matches();
     }
 }

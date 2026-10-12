@@ -154,3 +154,34 @@ vaadin-app-layout::part(navbar) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* typed values: booleans read as a check / cross, not as the word true/false */
+.vaa-chip-bool {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lumo-space-xs);
+}
+
+.vaa-bool-yes,
+.vaa-bool-no {
+  width: var(--lumo-icon-size-s);
+  height: var(--lumo-icon-size-s);
+  flex: none;
+}
+
+.vaa-bool-yes {
+  color: var(--lumo-success-text-color);
+}
+
+.vaa-bool-no {
+  color: var(--lumo-error-text-color);
+}
+
+.vaa-chip a {
+  color: var(--lumo-primary-text-color);
+  text-decoration: none;
+}
+
+.vaa-chip a:hover {
+  text-decoration: underline;
+}
