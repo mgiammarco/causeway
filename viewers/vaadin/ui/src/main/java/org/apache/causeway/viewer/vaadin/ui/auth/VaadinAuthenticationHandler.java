@@ -18,6 +18,7 @@
  */
 package org.apache.causeway.viewer.vaadin.ui.auth;
 
+import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.server.ServiceInitEvent;
@@ -43,6 +44,7 @@ import org.apache.causeway.viewer.vaadin.ui.pages.login.VaadinLoginView;
  * wrapper, not by this guard.
  */
 @Component
+@StyleSheet(Lumo.UTILITY_STYLESHEET)
 @Theme(value = "causeway", variant = Lumo.LIGHT)
 public class VaadinAuthenticationHandler
         implements AppShellConfigurator, VaadinServiceInitListener {

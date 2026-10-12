@@ -35,7 +35,8 @@
     <packaging>pom</packaging>
 
     <properties>
-        <vaadin.version>24.8.4</vaadin.version>
+        <vaadin.version>25.3.2</vaadin.version>
+        <maven.compiler.release>21</maven.compiler.release>
     </properties>
 
     <dependencyManagement>
