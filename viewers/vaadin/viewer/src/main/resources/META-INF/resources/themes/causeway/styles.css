@@ -30,7 +30,10 @@ html[theme~="dark"] {
 
 /* 2. page canvas ------------------------------------------------------- */
 body {
-  background: var(--lumo-contrast-5pct);
+  background:
+    radial-gradient(60em 24em at 0% -10%, var(--lumo-primary-color-10pct), transparent 70%),
+    var(--lumo-contrast-5pct);
+  background-attachment: fixed;
 }
 
 /* crisp separation between navbar and page, on an opaque surface (the canvas behind
@@ -85,8 +88,16 @@ vaadin-app-layout::part(navbar) {
 }
 
 .vaa-card > h2 {
-  margin: 0 0 var(--lumo-space-s);
-  font-size: var(--lumo-font-size-m);
+  margin: calc(var(--lumo-space-m) * -1) calc(var(--lumo-space-m) * -1) var(--lumo-space-m);
+  padding: var(--lumo-space-s) var(--lumo-space-m);
+  font-size: var(--lumo-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lumo-secondary-text-color);
+  background: var(--lumo-contrast-5pct);
+  border-bottom: 1px solid var(--lumo-contrast-10pct);
+  border-radius: var(--lumo-border-radius-l) var(--lumo-border-radius-l) 0 0;
 }
 
 .vaa-section {
@@ -97,8 +108,20 @@ vaadin-app-layout::part(navbar) {
 }
 
 .vaa-section > h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--lumo-space-s);
   margin: 0;
   font-size: var(--lumo-font-size-l);
+}
+
+/* a short accent bar ties collection headings to the card headers */
+.vaa-section > h3::before {
+  content: "";
+  width: 0.25rem;
+  height: 1.1em;
+  border-radius: 0.125rem;
+  background: var(--lumo-primary-color);
 }
 
 .vaa-actions {
@@ -121,22 +144,97 @@ vaadin-app-layout::part(navbar) {
 }
 
 .vaa-property-label {
-  font-size: var(--lumo-font-size-s);
+  font-size: var(--lumo-font-size-xs);
+  font-weight: 500;
   color: var(--lumo-secondary-text-color);
 }
 
+/* the value sits in a bordered box like an input, the pencil at its right edge */
 .vaa-property-value {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--lumo-space-xs);
   min-width: 0;
+  min-height: var(--lumo-size-m);
+  box-sizing: border-box;
+  padding: 0 var(--lumo-space-xs) 0 var(--lumo-space-s);
+  background: var(--lumo-base-color);
+  border: 1px solid var(--lumo-contrast-20pct);
+  border-radius: var(--lumo-border-radius-m);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.vaa-property-value:hover {
+  border-color: var(--lumo-primary-color-50pct);
+}
+
+/* read-only: same box, flat, no pencil */
+.vaa-readonly .vaa-property-value {
+  background: var(--lumo-contrast-5pct);
+  border-style: dashed;
+  padding-right: var(--lumo-space-s);
+}
+
+/* editing: the real widget draws its own box */
+.vaa-property-value.vaa-editing {
+  border-color: transparent;
+  background: transparent;
+  padding: 0;
+  align-items: flex-end;
+}
+
+.vaa-property-value.vaa-editing > :first-child {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 .vaa-chip {
-  background: var(--lumo-contrast-10pct);
-  border-radius: var(--lumo-border-radius-m);
-  padding: var(--lumo-space-xs) var(--lumo-space-s);
-  font-size: var(--lumo-font-size-s);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: var(--lumo-space-xs) 0;
+}
+
+/* the object's header: icon tile, type name, title */
+.vaa-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--lumo-space-m);
+  padding: var(--lumo-space-s) 0;
+}
+
+.vaa-hero-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--lumo-border-radius-l);
+  color: var(--lumo-primary-contrast-color);
+  background: linear-gradient(135deg, var(--lumo-primary-color), var(--lumo-primary-text-color));
+  box-shadow: var(--lumo-box-shadow-s);
+}
+
+.vaa-hero-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vaa-hero-eyebrow {
+  font-size: var(--lumo-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lumo-primary-text-color);
+}
+
+.vaa-hero-title {
+  margin: 0;
+  font-size: var(--lumo-font-size-xxl);
+  line-height: var(--lumo-line-height-xs);
+  color: var(--lumo-header-text-color);
   overflow-wrap: anywhere;
 }
 
@@ -184,4 +282,31 @@ vaadin-app-layout::part(navbar) {
 
 .vaa-chip a:hover {
   text-decoration: underline;
+}
+
+/* tables: a framed surface with a quiet header and a hover row */
+vaadin-grid {
+  background: var(--lumo-base-color);
+  border: 1px solid var(--lumo-contrast-10pct);
+  border-radius: var(--lumo-border-radius-l);
+  box-shadow: var(--lumo-box-shadow-xs);
+  overflow: hidden;
+}
+
+vaadin-grid::part(header-cell) {
+  background: var(--lumo-contrast-5pct);
+  color: var(--lumo-secondary-text-color);
+  font-size: var(--lumo-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+vaadin-grid::part(row):hover > * {
+  background: var(--lumo-primary-color-10pct);
+}
+
+/* tabs: the active one carries the accent */
+vaadin-tabsheet::part(tabs-container) {
+  margin-bottom: var(--lumo-space-s);
 }

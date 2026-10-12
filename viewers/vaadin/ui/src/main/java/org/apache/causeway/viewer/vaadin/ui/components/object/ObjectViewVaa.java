@@ -33,12 +33,9 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.html.Anchor;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.tabs.TabSheetVariant;
-import com.vaadin.flow.theme.lumo.LumoUtility;
 
 import org.apache.causeway.applib.annotation.Where;
 import org.apache.causeway.applib.layout.component.ActionLayoutData;
@@ -127,22 +124,23 @@ public class ObjectViewVaa extends VerticalLayout {
             protected void onObjectTitle(final HasComponents container, final DomainObjectLayoutData domainObjectData) {
                 // a generic per-object icon (Wicket shows a type-specific one via
                 // @DomainObjectLayout(cssClassFa=...), a Font Awesome class name with
-                // no equivalent in Vaadin's own icon set; none of this demo's domain
-                // objects declare one anyway, so a single consistent icon here gives
-                // the same "not just bare text" visual weight without a brittle
-                // fa-class-name-to-VaadinIcon mapping for a facet nothing uses yet).
+                // no equivalent in Vaadin's own icon set), set in a tinted tile; above the
+                // title sits the object's type name as a small "eyebrow", so the page says
+                // both what the object is and which one it is
                 var icon = VaadinIcon.RECORDS.create();
-                icon.setSize("1.25em");
-                icon.addClassNames(LumoUtility.TextColor.PRIMARY);
+                icon.setSize("1.5em");
+                var iconTile = new Div(icon);
+                iconTile.addClassName("vaa-hero-icon");
 
-                // one dominant heading style: neutral header color, the icon carries the accent
+                var eyebrow = new Span(managedObject.objSpec().getSingularName());
+                eyebrow.addClassName("vaa-hero-eyebrow");
                 var h1 = new H1(objectTitle);
-                h1.addClassNames(LumoUtility.Margin.NONE, LumoUtility.FontSize.XXLARGE,
-                        LumoUtility.TextColor.HEADER);
+                h1.addClassName("vaa-hero-title");
 
-                var titleRow = Vaa.add(container, new HorizontalLayout(icon, h1));
-                titleRow.setAlignItems(FlexComponent.Alignment.CENTER);
-                titleRow.setPadding(false);
+                var heroText = new Div(eyebrow, h1);
+                heroText.addClassName("vaa-hero-text");
+                var hero = Vaa.add(container, new Div(iconTile, heroText));
+                hero.addClassName("vaa-hero");
             }
 
             // The bootstrap 12-column grid maps onto CSS Grid (see the "causeway" theme):
@@ -377,6 +375,7 @@ public class ObjectViewVaa extends VerticalLayout {
                     }
                     editing[0] = !editing[0];
                     contentRow.removeAll();
+                    contentRow.setClassName("vaa-editing", editing[0]);
                     if (editing[0]) {
                         // the editor renders its own label, so ours would duplicate it
                         labelSpan.setVisible(false);
@@ -429,7 +428,7 @@ public class ObjectViewVaa extends VerticalLayout {
                 var contentRow = new Div(valueChip);
                 contentRow.addClassName("vaa-property-value");
                 var wrapper = new Div(labelSpan, contentRow);
-                wrapper.addClassName("vaa-property");
+                wrapper.addClassNames("vaa-property", "vaa-readonly");
                 wrapper.addDetachListener(event -> propertyNegotiation.getValue().removeListener(chipListener));
                 return wrapper;
             }
