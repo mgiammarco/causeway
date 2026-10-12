@@ -126,25 +126,30 @@ public class MainViewVaa extends AppLayout
                 ? header.branding().getName().orElse("Apache Causeway")
                 : "Apache Causeway";
         var title = new H1(appName);
-        title.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE,
-                LumoUtility.Whitespace.NOWRAP);
+        title.addClassNames("vaa-brand", LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
 
         var navbar = header.navbar();
         var primaryMenu = MenuBuilderVaa.buildMenuBar(
                 navbar.primary(), uiActionHandler::handleActionLinkClicked);
-        var secondaryMenu = MenuBuilderVaa.buildMenuBar(
-                navbar.secondary(), uiActionHandler::handleActionLinkClicked);
-        var tertiaryMenu = MenuBuilderVaa.buildMenuBar(
-                navbar.tertiary(), uiActionHandler::handleActionLinkClicked);
+        // The primary menu takes the free width and may shrink to zero: a MenuBar folds
+        // the items that no longer fit into its own overflow ("...") button, so on a phone
+        // nothing is pushed off-screen. (Without min-width:0 a flex item refuses to shrink
+        // below its content and the utility menus on the right became unreachable.)
+        primaryMenu.getStyle().set("min-width", "0");
 
-        // flexible gap pushes the secondary/tertiary (utility) menus to the right
-        var spacer = new Div();
+        var userProfile = header.userProfile();
+        var accountLabel = userProfile.getUserProfileName() != null
+                ? userProfile.getUserProfileName()
+                : userProfile.userMemento().map(user -> user.name()).orElse("Account");
+        var accountMenu = MenuBuilderVaa.buildAccountMenuBar(
+                accountLabel, uiActionHandler::handleActionLinkClicked,
+                navbar.secondary(), navbar.tertiary());
         var themeToggle = newThemeToggle();
 
-        var headerBar = new HorizontalLayout(title, primaryMenu, spacer, secondaryMenu, tertiaryMenu, themeToggle);
+        var headerBar = new HorizontalLayout(title, primaryMenu, accountMenu, themeToggle);
         headerBar.setAlignItems(FlexComponent.Alignment.CENTER);
         headerBar.setWidthFull();
-        headerBar.expand(spacer);
+        headerBar.expand(primaryMenu);
         headerBar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
         // setWidthFull() + Padding.* without this adds the padding on top of 100%
         // width instead of carving it out — the same recipe already proven to
@@ -159,7 +164,9 @@ public class MainViewVaa extends AppLayout
         breadcrumbBar.setVisible(false); // shown only once there is an actual trail
 
         pageContent.setWidthFull();
-        pageContent.addClassNames(LumoUtility.Padding.LARGE);
+        // "vaa-page" is the container the object-page grid measures to decide when
+        // side-by-side columns stack (see the "causeway" theme)
+        pageContent.addClassNames("vaa-page", LumoUtility.Padding.LARGE);
         pageContent.getStyle().set("box-sizing", "border-box");
 
         var contentWrap = new VerticalLayout(breadcrumbBar, pageContent);
@@ -206,20 +213,36 @@ public class MainViewVaa extends AppLayout
      * Closest Vaadin/Lumo equivalent to Wicket's live Bootswatch theme-switcher
      * footer: Lumo ships exactly two built-in variants (light/dark, no separate
      * theme files to swap), toggled via the page's theme attribute list.
+     *
+     * <p>
+     * The first render follows the browser's {@code prefers-color-scheme}, a manual
+     * toggle is remembered in {@code localStorage} and wins from then on.
+     * </p>
      */
     private Button newThemeToggle() {
         var button = Vaa.newIconButton(VaadinIcon.MOON_O, "Toggle dark theme");
         button.addClickListener(event -> {
-            var themeList = UI.getCurrent().getElement().getThemeList();
-            if (themeList.contains(Lumo.DARK)) {
-                themeList.remove(Lumo.DARK);
-                button.setIcon(VaadinIcon.MOON_O.create());
-            } else {
-                themeList.add(Lumo.DARK);
-                button.setIcon(VaadinIcon.SUN_O.create());
-            }
+            var dark = !UI.getCurrent().getElement().getThemeList().contains(Lumo.DARK);
+            applyTheme(button, dark);
+            UI.getCurrent().getPage().executeJs("try{localStorage.setItem('causeway-vaa-theme',$0)}catch(e){}",
+                    dark ? "dark" : "light");
         });
+        UI.getCurrent().getPage()
+                .executeJs("try{return localStorage.getItem('causeway-vaa-theme')"
+                        + "||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}"
+                        + "catch(e){return 'light'}")
+                .then(String.class, preferred -> applyTheme(button, "dark".equals(preferred)));
         return button;
+    }
+
+    private static void applyTheme(final Button toggle, final boolean dark) {
+        var themeList = UI.getCurrent().getElement().getThemeList();
+        if (dark) {
+            themeList.add(Lumo.DARK);
+        } else {
+            themeList.remove(Lumo.DARK);
+        }
+        toggle.setIcon((dark ? VaadinIcon.SUN_O : VaadinIcon.MOON_O).create());
     }
 
     private void replaceContent(final Component component) {

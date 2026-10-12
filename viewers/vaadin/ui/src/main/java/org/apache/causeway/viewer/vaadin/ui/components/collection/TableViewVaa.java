@@ -22,10 +22,12 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.provider.ListDataProvider;
@@ -69,6 +71,9 @@ public class TableViewVaa extends VerticalLayout {
     }
 
     private TableViewVaa(final DataTableInteractive dataTable, final Consumer<ManagedObject> onRowSelect) {
+        // a table is embedded in cards/sections that own their spacing; its own default
+        // padding would indent it relative to the heading above it
+        setPadding(false);
         var rows = dataTable.dataRowsFilteredAndSortedObservable().getValue();
         if (rows.isEmpty()) {
             add(new Span("No rows to display."));
@@ -88,8 +93,14 @@ public class TableViewVaa extends VerticalLayout {
             grid.setAllRowsVisible(true);
         }
 
-        grid.addColumn(row -> MmTitleUtils.titleOf(row.rowElement()))
-                .setHeader("");
+        // the row's object: styled as the link into it (a click on any cell navigates)
+        // (a light-DOM renderer, so the theme's global .vaa-title-cell rule reaches it;
+        // styling the cell through the grid's shadow DOM would need a component stylesheet)
+        grid.addColumn(LitRenderer.<DataRow>of("<span class='vaa-title-cell'>${item.title}</span>")
+                        .withProperty("title", row -> MmTitleUtils.titleOf(row.rowElement())))
+                .setHeader("Object")
+                .setComparator((rowA, rowB) -> MmTitleUtils.titleOf(rowA.rowElement())
+                        .compareToIgnoreCase(MmTitleUtils.titleOf(rowB.rowElement())));
 
         columns.forEach(column -> {
             var gridColumn = grid.addColumn(row -> stringifyCell(row, column))
@@ -101,6 +112,9 @@ public class TableViewVaa extends VerticalLayout {
             // one comparable cell element; fall back to the displayed text otherwise
             // (e.g. multi-valued cells, or a value type with no natural ordering).
             gridColumn.setComparator((rowA, rowB) -> compareCells(rowA, rowB, column));
+            if (isNumeric(rowsList, column)) {
+                gridColumn.setTextAlign(ColumnTextAlign.END);
+            }
         });
 
         grid.getColumns().forEach(column -> column.setAutoWidth(true));
@@ -131,6 +145,16 @@ public class TableViewVaa extends VerticalLayout {
 
         add(grid);
         setWidthFull();
+    }
+
+    /** Whether the column holds numbers (judged by its first non-empty cell): those read better right-aligned. */
+    private static boolean isNumeric(final java.util.List<DataRow> rows, final DataColumn column) {
+        return rows.stream()
+                .map(row -> singleCellPojo(row, column))
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .map(pojo -> pojo instanceof Number)
+                .orElse(false);
     }
 
     private static String stringifyCell(final DataRow row, final DataColumn column) {

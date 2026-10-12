@@ -20,9 +20,10 @@ package org.apache.causeway.viewer.vaadin.ui.components.action;
 
 import java.util.function.Predicate;
 
+import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.interactions.managed.ManagedAction;
@@ -51,17 +52,24 @@ public class ActionDialog extends Dialog {
 
         setHeaderTitle(managedAction.getFriendlyName());
         setModal(true);
+        // wide enough for a typical field, never wider than a phone screen
+        setWidth("28em");
+        setMaxWidth("100%");
 
         var actionForm = ActionForm.forManagedAction(uiComponentFactory, managedAction);
         add(actionForm);
 
+        // Cancel (tertiary) then OK (primary, Enter) -- the convention users know
         var okButton = new Button("OK", event -> {
             var paramValues = actionForm.getParameterNegotiation().getParamValues();
             if (submitHandler.test(paramValues)) {
                 close();
             }
         });
+        okButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        okButton.addClickShortcut(Key.ENTER);
         var cancelButton = new Button("Cancel", event -> close());
-        getFooter().add(new HorizontalLayout(okButton, cancelButton));
+        cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        getFooter().add(cancelButton, okButton);
     }
 }

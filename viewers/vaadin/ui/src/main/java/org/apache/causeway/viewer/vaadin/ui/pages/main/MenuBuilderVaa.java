@@ -23,7 +23,12 @@ import java.util.function.Consumer;
 import com.vaadin.flow.component.contextmenu.SubMenu;
 import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
+import com.vaadin.flow.component.menubar.MenuBarVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 
 import org.apache.causeway.core.metamodel.interactions.managed.ManagedAction;
 import org.apache.causeway.viewer.commons.applib.services.menu.MenuVisitor;
@@ -57,10 +62,47 @@ public class MenuBuilderVaa implements MenuVisitor {
         return menuBar;
     }
 
+    /**
+     * Builds a single-dropdown {@link MenuBar} (an account menu: user icon + {@code label})
+     * holding the items of all the given sections, flattened. The viewer's utility
+     * sections (secondary/tertiary) typically hold one entry each ("Logout", "Me",
+     * "Configuration"); as separate top-level buttons they take more width than a
+     * phone has, while one dropdown always fits.
+     */
+    public static MenuBar buildAccountMenuBar(
+            final String label,
+            final Consumer<ManagedAction> actionEventHandler,
+            final NavbarSection... sections) {
+        var menuBar = new MenuBar();
+        menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY);
+        var userIcon = new Icon(VaadinIcon.USER);
+        var chevron = new Icon(VaadinIcon.ANGLE_DOWN);
+        userIcon.setSize("var(--lumo-icon-size-s)");
+        chevron.setSize("var(--lumo-icon-size-xs)");
+        var caption = new HorizontalLayout(userIcon, new Span(label), chevron);
+        caption.setSpacing(false);
+        caption.setPadding(false);
+        caption.getStyle().set("gap", "var(--lumo-space-xs)");
+        caption.setAlignItems(FlexComponent.Alignment.CENTER);
+        var accountItem = menuBar.addItem(caption);
+        accountItem.getElement().setAttribute("aria-label", label);
+        var visitor = new MenuBuilderVaa(menuBar, actionEventHandler);
+        visitor.currentSubMenu = accountItem.getSubMenu();
+        visitor.flatten = true;
+        for (var section : sections) {
+            section.visitMenuItems(visitor);
+        }
+        return menuBar;
+    }
+
     // -- constructor / fields
 
     private final MenuBar menuBar;
     private final Consumer<ManagedAction> actionEventHandler;
+
+    /** Whether all top-level dropdowns are merged into the one sub-menu {@link #currentSubMenu}. */
+    private boolean flatten;
+    private boolean flattenedAnyItem;
 
     /**
      * Tracks the sub-menu opened by the most recent {@link #onTopLevel(MenuDropdown)} call.
@@ -80,11 +122,19 @@ public class MenuBuilderVaa implements MenuVisitor {
 
     @Override
     public void onTopLevel(final MenuDropdown menuDropdown) {
+        if (flatten) {
+            // a divider keeps the former dropdowns visually apart
+            if (flattenedAnyItem) {
+                onSectionSpacer();
+            }
+            return;
+        }
         currentSubMenu = menuBar.addItem(menuDropdown.name()).getSubMenu();
     }
 
     @Override
     public void onMenuAction(final MenuAction menuAction) {
+        flattenedAnyItem = true;
         currentSubMenu.addItem(menuAction.name(), event ->
                 menuAction.managedAction().ifPresent(actionEventHandler));
     }

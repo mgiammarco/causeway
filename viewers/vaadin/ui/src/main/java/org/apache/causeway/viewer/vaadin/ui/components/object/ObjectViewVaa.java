@@ -22,17 +22,17 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.ComponentUtil;
 import com.vaadin.flow.component.HasComponents;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.formlayout.FormLayout.ResponsiveStep;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
-import com.vaadin.flow.component.orderedlayout.FlexLayout;
-import com.vaadin.flow.component.orderedlayout.FlexLayout.FlexWrap;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
@@ -79,6 +79,22 @@ public class ObjectViewVaa extends VerticalLayout {
 
     private static final long serialVersionUID = 1L;
 
+    /** {@link ComponentUtil} data key under which a tab's content remembers the tab's name. */
+    private static final String TAB_NAME_KEY = "causeway.vaa.tab-name";
+
+    /** Name of the tab {@code component} is rendered in, or {@code null} when it is not inside one. */
+    private static String enclosingTabName(final HasComponents component) {
+        Component current = (Component) component;
+        while (current != null) {
+            var name = ComponentUtil.getData(current, TAB_NAME_KEY);
+            if (name instanceof String tabName) {
+                return tabName;
+            }
+            current = current.getParent().orElse(null);
+        }
+        return null;
+    }
+
     public static ObjectViewVaa fromObject(
             final UiComponentFactoryVaa uiComponentFactory,
             final Consumer<ManagedAction> actionEventHandler,
@@ -97,6 +113,14 @@ public class ObjectViewVaa extends VerticalLayout {
 
         var gridVisitor = new UiGridLayout.Visitor<HasComponents, TabSheet>(this) {
 
+            /**
+             * Ids of the actions already shown in the current fieldset's action panel. The
+             * metamodel can also report such an action as "associated" with one of the
+             * fieldset's properties (so it would appear a second time next to that property);
+             * showing a button twice in one card only confuses, so the property skips it.
+             */
+            private final java.util.Set<String> fieldSetActionIds = new java.util.HashSet<>();
+
             @Override
             protected void onObjectTitle(final HasComponents container, final DomainObjectLayoutData domainObjectData) {
                 // a generic per-object icon (Wicket shows a type-specific one via
@@ -109,56 +133,40 @@ public class ObjectViewVaa extends VerticalLayout {
                 icon.setSize("1.25em");
                 icon.addClassNames(LumoUtility.TextColor.PRIMARY);
 
+                // one dominant heading style: neutral header color, the icon carries the accent
                 var h1 = new H1(objectTitle);
-                h1.addClassNames(LumoUtility.Margin.NONE, LumoUtility.TextColor.PRIMARY);
+                h1.addClassNames(LumoUtility.Margin.NONE, LumoUtility.FontSize.XXLARGE,
+                        LumoUtility.TextColor.HEADER);
 
                 var titleRow = Vaa.add(container, new HorizontalLayout(icon, h1));
                 titleRow.setAlignItems(FlexComponent.Alignment.CENTER);
-                titleRow.addClassNames(LumoUtility.Margin.Bottom.MEDIUM);
+                titleRow.setPadding(false);
             }
 
+            // The bootstrap 12-column grid maps onto CSS Grid (see the "causeway" theme):
+            // a row is a 12-track grid with a gap, a column spans N tracks via a custom
+            // property, and the theme stacks columns below a container width. This replaces
+            // the former flex-basis/calc() gutter arithmetic, which drifted by the gutter
+            // width on every nesting level (tabbed vs untabbed cards were visibly misaligned).
             @Override
             protected HasComponents newRow(final HasComponents container, final BSRow bsRow) {
-                var uiRow = Vaa.add(container, new FlexLayout());
-                uiRow.setWidthFull();
-                uiRow.setFlexWrap(FlexWrap.WRAP);
+                var uiRow = Vaa.add(container, new Div());
+                uiRow.addClassName("vaa-row");
                 return uiRow;
             }
 
             @Override
             protected HasComponents newCol(final HasComponents container, final BSCol bsCol) {
-                var uiCol = Vaa.add(container, new VerticalLayout());
-                uiCol.setPadding(false);
-                uiCol.setSpacing(false);
-                // Bootstrap-style 12-column span, as a percentage of the row's width.
-                // A fixed setWidthFull() here would make every column claim 100% and,
-                // combined with the row's flex-wrap, force side-by-side columns (e.g. a
-                // two-column bs3:row) to stack vertically instead.
-                var widthPercent = (bsCol.getSpan() * 100.0) / 12;
-                uiCol.getStyle()
-                        // flex-grow:0, flex-shrink:0 (the "0 0" in flex-basis) alone fixes
-                        // the column's width — no separate max-width needed alongside it.
-                        // The "- var(--lumo-space-m)" / margin-inline pair below carves a
-                        // gutter out of that same percentage (self-balancing: each column
-                        // gives back exactly what it takes, regardless of how many siblings
-                        // share the row), instead of widening the row via a plain CSS gap,
-                        // which would overflow a flex-shrink:0 100%-wide row and force the
-                        // very wrapping this comment above warns against.
-                        .set("flex", "0 0 calc(" + widthPercent + "% - var(--lumo-space-m))")
-                        .set("margin-inline", "calc(var(--lumo-space-m) / 2)")
-                        .set("box-sizing", "border-box")
-                        // flex items default to min-width:auto, which refuses to shrink
-                        // below the content's preferred size (e.g. a wide Grid) — without
-                        // this, a table inside a column escapes the column's percentage width.
-                        .set("min-width", "0");
+                var uiCol = Vaa.add(container, new Div());
+                uiCol.addClassName("vaa-col");
+                uiCol.getStyle().set("--vaa-span", String.valueOf(bsCol.getSpan()));
                 return uiCol;
             }
 
             @Override
             protected HasComponents newActionPanel(final HasComponents container) {
-                var uiActionPanel = Vaa.add(container, new FlexLayout());
-                uiActionPanel.setFlexWrap(FlexWrap.WRAP);
-                uiActionPanel.setAlignItems(FlexComponent.Alignment.BASELINE);
+                var uiActionPanel = Vaa.add(container, new Div());
+                uiActionPanel.addClassName("vaa-actions");
                 return uiActionPanel;
             }
 
@@ -172,45 +180,43 @@ public class ObjectViewVaa extends VerticalLayout {
                 // tabbed fieldset (e.g. "Identity") renders narrower per side than an
                 // untabbed sibling fieldset (e.g. "Contact") in the same row.
                 tabSheet.addThemeVariants(TabSheetVariant.LUMO_NO_PADDING);
+                // a layout may declare a tab group with no tabs (Causeway's grid validation
+                // requires one as the "unreferenced collections" safety net): shown as is,
+                // it would draw an empty tab strip, so it stays hidden until a tab arrives
+                tabSheet.setVisible(false);
                 return tabSheet;
             }
 
             @Override
             protected HasComponents newTab(final TabSheet tabSheet, final BSTab tabData) {
-                var tabContent = new VerticalLayout();
-                tabContent.setWidthFull();
-                // VerticalLayout pads itself by default on top of TabSheet's own content
-                // inset, so a fieldset inside a tab ends up ~2x narrower per side than an
-                // untabbed sibling fieldset in the same row (e.g. "Identity" vs "Contact").
-                tabContent.setPadding(false);
+                var tabContent = new Div();
+                // same column rules as any other grid column, so a card inside a tab lines up
+                // exactly with an untabbed sibling card in the same column
+                tabContent.addClassName("vaa-col");
+                ComponentUtil.setData(tabContent, TAB_NAME_KEY, tabData.getName());
                 tabSheet.add(tabData.getName(), tabContent);
+                tabSheet.setVisible(true);
                 return tabContent;
             }
 
             @Override
             protected HasComponents newFieldSet(final HasComponents container, final FieldSet fieldSetData) {
                 // render each fieldset as a light "card": header, associated actions, then a
-                // two-column responsive form for its properties.
-                var card = Vaa.add(container, new com.vaadin.flow.component.html.Div());
-                card.setWidthFull();
-                // a bordered, subtly-elevated white card reads as a distinct layer against
-                // the (now tinted) page canvas — a flat CONTRAST_5 fill blended into the
-                // background and gave every fieldset the same flat, cardless look.
-                card.addClassNames(LumoUtility.Background.BASE, LumoUtility.Border.ALL,
-                        LumoUtility.BorderColor.CONTRAST_10, LumoUtility.BoxShadow.SMALL,
-                        LumoUtility.BorderRadius.LARGE,
-                        LumoUtility.Padding.MEDIUM, LumoUtility.Margin.Bottom.MEDIUM);
-                // without this, the card's own padding (LumoUtility.Padding.MEDIUM) adds
-                // on top of its 100%-of-column width instead of being carved out of it,
-                // so the card visibly overflows into the next column (e.g. "Details" on
-                // the left bleeding under "Visits" on the right of a two-column layout).
-                card.getStyle().set("box-sizing", "border-box");
+                // two-column responsive form for its properties. The card look (surface,
+                // border, radius, elevation) lives in the theme, so it follows dark mode.
+                var card = Vaa.add(container, new Div());
+                card.addClassName("vaa-card");
 
-                var heading = Vaa.add(card, new H2(fieldSetData.getName()));
-                heading.addClassNames(LumoUtility.FontSize.MEDIUM, LumoUtility.Margin.Bottom.SMALL);
+                // a tab already titled like its only fieldset (e.g. tab "Identity" holding
+                // fieldset "Identity") would show the same word twice, one under the other
+                if (!fieldSetData.getName().equals(enclosingTabName(container))) {
+                    Vaa.add(card, new H2(fieldSetData.getName()));
+                }
 
                 var actionBar = newActionPanel(card);
+                fieldSetActionIds.clear();
                 for (var actionData : fieldSetData.getActions()) {
+                    fieldSetActionIds.add(actionData.getId());
                     onAction(actionBar, actionData);
                 }
 
@@ -223,7 +229,7 @@ public class ObjectViewVaa extends VerticalLayout {
 
             @Override
             protected void onClearfix(final HasComponents container, final BSClearFix clearFixData) {
-                // not needed: FlexLayout wraps lines on its own
+                // not needed: CSS Grid places columns on its own
             }
 
             @Override
@@ -284,9 +290,21 @@ public class ObjectViewVaa extends VerticalLayout {
                             // download link shown unconditionally, an Upload appended only
                             // when editable) — wrapping that in the toggle would hide the
                             // download link itself behind the "edit" pencil, so it's excluded.
-                            var added = disablingModel.isEmpty() && !isBlobOrClob(managedProperty)
-                                    ? newPropertyViewEditToggle(managedProperty, propertyNegotiation, editorSupplier)
-                                    : editorSupplier.get();
+                            // A property that is disabled (read-only) and holds a plain value gets
+                            // the same chip as an editable one, minus the pencil, so every value
+                            // on the page reads alike; the veto reason becomes its tooltip.
+                            // Other disabled widgets (checkbox, markup, ...) stay as rendered.
+                            Component added;
+                            if (isBlobOrClob(managedProperty)) {
+                                added = editorSupplier.get();
+                            } else if (disablingModel.isEmpty()) {
+                                added = newPropertyViewEditToggle(managedProperty, propertyNegotiation, editorSupplier);
+                            } else if (isPlainValue(managedProperty)) {
+                                added = newReadOnlyProperty(managedProperty, propertyNegotiation,
+                                        disablingModel.get().reason());
+                            } else {
+                                added = editorSupplier.get();
+                            }
                             Vaa.add(container, added);
                             added.addDetachListener(event ->
                                     propertyNegotiation.getValue().removeListener(submitListener));
@@ -295,9 +313,15 @@ public class ObjectViewVaa extends VerticalLayout {
                             // which is only populated from a hand-written layout.xml) so
                             // @ActionLayout(associateWith=...) actions show up even on an
                             // auto-generated fallback layout.
-                            var actionBar = newActionPanel(container);
+                            // the property's own actions belong to its cell: placed beside it they
+                            // would become a separate form cell and drift away from their property
+                            HasComponents actionHost = added instanceof Div cell
+                                    && cell.hasClassName("vaa-property") ? cell : container;
+                            var actionBar = newActionPanel(actionHost);
                             for (ObjectAction associatedAction : managedProperty.getAssociatedActions()) {
-                                onAction(actionBar, associatedAction);
+                                if (!fieldSetActionIds.contains(associatedAction.getId())) {
+                                    onAction(actionBar, associatedAction);
+                                }
                             }
                         });
             }
@@ -323,16 +347,10 @@ public class ObjectViewVaa extends VerticalLayout {
                     final Supplier<Component> editorSupplier) {
 
                 var labelSpan = new Span(managedProperty.getFriendlyName());
-                labelSpan.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY);
+                labelSpan.addClassName("vaa-property-label");
 
-                var valueChip = new Span();
-                valueChip.addClassNames(LumoUtility.Background.CONTRAST_10, LumoUtility.Padding.Horizontal.SMALL,
-                        LumoUtility.Padding.Vertical.XSMALL, LumoUtility.BorderRadius.MEDIUM,
-                        LumoUtility.FontSize.SMALL);
-                Runnable refreshChip = () -> {
-                    var text = Vaa.titleOfOrBlank(propertyNegotiation.getValue().getValue());
-                    valueChip.setText(text.isBlank() ? "(none)" : text);
-                };
+                var valueChip = newValueChip();
+                Runnable refreshChip = () -> setChipText(valueChip, propertyNegotiation);
                 refreshChip.run();
                 ChangeListener<ManagedObject> chipListener = (observable, oldValue, newValue) -> refreshChip.run();
                 propertyNegotiation.getValue().addListener(chipListener);
@@ -342,15 +360,11 @@ public class ObjectViewVaa extends VerticalLayout {
                 // earlier version of this toggle hid the button along with the chip
                 // when entering edit mode, leaving no way to switch back.
                 var editIcon = Vaa.newIconButton(VaadinIcon.PENCIL, "Edit " + managedProperty.getFriendlyName());
-                var contentRow = new HorizontalLayout(valueChip, editIcon);
-                contentRow.setPadding(false);
-                contentRow.setSpacing(true);
-                contentRow.setAlignItems(FlexComponent.Alignment.CENTER);
+                var contentRow = new Div(valueChip, editIcon);
+                contentRow.addClassName("vaa-property-value");
 
-                var wrapper = new VerticalLayout(labelSpan, contentRow);
-                wrapper.setPadding(false);
-                wrapper.setSpacing(false);
-                wrapper.addClassNames(LumoUtility.Margin.Bottom.SMALL);
+                var wrapper = new Div(labelSpan, contentRow);
+                wrapper.addClassName("vaa-property");
 
                 // editor built on first click; toggled (not rebuilt) on every click after
                 var editorHolder = new Component[1];
@@ -382,23 +396,74 @@ public class ObjectViewVaa extends VerticalLayout {
                 return wrapper;
             }
 
+            /** Value types worth showing as a text chip (not checkbox, markup or blob/clob widgets). */
+            private boolean isPlainValue(final ManagedProperty managedProperty) {
+                var cls = managedProperty.getElementType().correspondingClass();
+                return !isBlobOrClob(managedProperty)
+                        && !Boolean.class.equals(cls) && !boolean.class.equals(cls)
+                        && !org.apache.causeway.applib.value.Markup.class.equals(cls);
+            }
+
+            /**
+             * A disabled property: label + the same value chip an editable one shows,
+             * without the pencil. {@code reason} (why it is read-only) is the chip's tooltip.
+             */
+            private Component newReadOnlyProperty(
+                    final ManagedProperty managedProperty,
+                    final PropertyNegotiationModel propertyNegotiation,
+                    final String reason) {
+                var labelSpan = new Span(managedProperty.getFriendlyName());
+                labelSpan.addClassName("vaa-property-label");
+
+                var valueChip = newValueChip();
+                setChipText(valueChip, propertyNegotiation);
+                if (reason != null && !reason.isBlank()) {
+                    valueChip.getElement().setAttribute("title", reason);
+                }
+                ChangeListener<ManagedObject> chipListener =
+                        (observable, oldValue, newValue) -> setChipText(valueChip, propertyNegotiation);
+                propertyNegotiation.getValue().addListener(chipListener);
+
+                var contentRow = new Div(valueChip);
+                contentRow.addClassName("vaa-property-value");
+                var wrapper = new Div(labelSpan, contentRow);
+                wrapper.addClassName("vaa-property");
+                wrapper.addDetachListener(event -> propertyNegotiation.getValue().removeListener(chipListener));
+                return wrapper;
+            }
+
+            private Span newValueChip() {
+                var chip = new Span();
+                chip.addClassName("vaa-chip");
+                return chip;
+            }
+
+            private void setChipText(final Span chip, final PropertyNegotiationModel propertyNegotiation) {
+                var text = Vaa.titleOfOrBlank(propertyNegotiation.getValue().getValue());
+                chip.setText(text.isBlank() ? "(none)" : text);
+            }
+
             @Override
             protected void onCollection(final HasComponents container, final CollectionLayoutData collectionData) {
                 CollectionInteraction.start(managedObject, collectionData.getId(), Where.OBJECT_FORMS)
                         .checkVisibility()
                         .getManagedCollection()
                         .ifPresent(managedCollection -> {
-                            Vaa.add(container, new H3(managedCollection.getFriendlyName()));
+                            // heading, actions and table form one section so the spacing between
+                            // them is set once (theme: .vaa-section) rather than per component
+                            var section = Vaa.add(container, new Div());
+                            section.addClassName("vaa-section");
+                            Vaa.add(section, new H3(managedCollection.getFriendlyName()));
 
                             // see onProperty: live lookup, not collectionData.getActions()
                             // (XML-only), so mixin/entity actions associated via
                             // @ActionLayout(associateWith=...) render without a layout.xml.
-                            var actionBar = newActionPanel(container);
+                            var actionBar = newActionPanel(section);
                             for (ObjectAction associatedAction : managedCollection.getAssociatedActions()) {
                                 onAction(actionBar, associatedAction);
                             }
 
-                            Vaa.add(container, TableViewVaa.forDataTableInteractive(
+                            Vaa.add(section, TableViewVaa.forDataTableInteractive(
                                     managedCollection.createDataTableModel(),
                                     objectNavHandler));
                         });

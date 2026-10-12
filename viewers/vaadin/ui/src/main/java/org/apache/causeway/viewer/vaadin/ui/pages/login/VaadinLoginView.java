@@ -19,11 +19,15 @@
 package org.apache.causeway.viewer.vaadin.ui.pages.login;
 
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.login.LoginForm;
+import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.theme.lumo.LumoUtility;
 
 import org.apache.causeway.core.security.authentication.AuthenticationRequestPassword;
 import org.apache.causeway.viewer.vaadin.ui.auth.VaadinAuthenticationHandler;
@@ -38,7 +42,7 @@ public class VaadinLoginView extends VerticalLayout {
         setJustifyContentMode(JustifyContentMode.CENTER);
         setAlignItems(FlexComponent.Alignment.CENTER);
 
-        var loginForm = new LoginForm();
+        var loginForm = new LoginForm(loginTexts());
         loginForm.setForgotPasswordButtonVisible(false);
         loginForm.addLoginListener(event -> {
             var request = new AuthenticationRequestPassword(
@@ -54,6 +58,27 @@ public class VaadinLoginView extends VerticalLayout {
             }
         });
 
-        add(new H1("Apache Causeway"), loginForm);
+        // brand above, form on an elevated card: one clear focal point on the tinted canvas
+        var brand = new H1("Apache Causeway");
+        brand.addClassNames(LumoUtility.Margin.NONE, LumoUtility.FontSize.XXLARGE, LumoUtility.TextColor.PRIMARY);
+        var tagline = new Span("Sign in to continue");
+        tagline.addClassNames(LumoUtility.TextColor.SECONDARY);
+
+        var card = new Div(loginForm);
+        card.addClassNames(LumoUtility.Background.BASE, LumoUtility.BorderRadius.LARGE,
+                LumoUtility.BoxShadow.MEDIUM, LumoUtility.Padding.SMALL);
+        card.setWidth("22em");
+        card.setMaxWidth("100%");
+
+        setSpacing(true);
+        add(brand, tagline, card);
+    }
+
+    private static LoginI18n loginTexts() {
+        var i18n = LoginI18n.createDefault();
+        i18n.getForm().setTitle("Log in");
+        i18n.getErrorMessage().setTitle("Incorrect username or password");
+        i18n.getErrorMessage().setMessage("Check that you have entered the correct username and password and try again.");
+        return i18n;
     }
 }

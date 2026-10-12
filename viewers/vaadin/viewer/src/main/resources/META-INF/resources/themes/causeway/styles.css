@@ -1,0 +1,156 @@
+/*
+ * Default Lumo theme "causeway" shipped with the Vaadin viewer.
+ *
+ * An application can replace it by providing its own frontend/themes/causeway
+ * folder. Everything here is expressed through Lumo design tokens, so the
+ * light and dark variants (and any token override) apply automatically.
+ *
+ * 1. design tokens   2. page canvas   3. object-page grid   4. building blocks
+ */
+
+/* 1. design tokens ----------------------------------------------------- */
+html {
+  --lumo-primary-color: #4f46e5;
+  --lumo-primary-color-50pct: rgba(79, 70, 229, 0.5);
+  --lumo-primary-color-10pct: rgba(79, 70, 229, 0.1);
+  --lumo-primary-text-color: #4338ca;
+  --lumo-primary-contrast-color: #ffffff;
+
+  --lumo-border-radius-m: 0.5rem;
+  --lumo-border-radius-l: 0.75rem;
+}
+
+html[theme~="dark"] {
+  --lumo-primary-color: #818cf8;
+  --lumo-primary-color-50pct: rgba(129, 140, 248, 0.5);
+  --lumo-primary-color-10pct: rgba(129, 140, 248, 0.15);
+  --lumo-primary-text-color: #a5b4fc;
+  --lumo-primary-contrast-color: #1e1b4b;
+}
+
+/* 2. page canvas ------------------------------------------------------- */
+body {
+  background: var(--lumo-contrast-5pct);
+}
+
+/* crisp separation between navbar and page, on an opaque surface (the canvas behind
+   is tinted). Styled through ::part from here rather than a components/ stylesheet:
+   Vaadin 24 does not register component stylesheets of a theme that lives in a jar. */
+vaadin-app-layout::part(navbar) {
+  background: var(--lumo-base-color);
+  box-shadow: 0 1px 0 0 var(--lumo-contrast-10pct);
+}
+
+/* the page area is the container the object-page grid reacts to */
+.vaa-page {
+  container-type: inline-size;
+  container-name: vaa-page;
+}
+
+/* 3. object-page grid (12-column, mirrors the bootstrap layout.xml) ----- */
+.vaa-row {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--lumo-space-m);
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.vaa-col {
+  grid-column: span var(--vaa-span, 12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lumo-space-m);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* below this width side-by-side columns stack instead of squeezing */
+@container vaa-page (max-width: 56em) {
+  .vaa-col {
+    grid-column: 1 / -1;
+  }
+}
+
+/* 4. building blocks --------------------------------------------------- */
+.vaa-card {
+  background: var(--lumo-base-color);
+  border: 1px solid var(--lumo-contrast-10pct);
+  border-radius: var(--lumo-border-radius-l);
+  box-shadow: var(--lumo-box-shadow-xs);
+  padding: var(--lumo-space-m);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.vaa-card > h2 {
+  margin: 0 0 var(--lumo-space-s);
+  font-size: var(--lumo-font-size-m);
+}
+
+.vaa-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lumo-space-s);
+  min-width: 0;
+}
+
+.vaa-section > h3 {
+  margin: 0;
+  font-size: var(--lumo-font-size-l);
+}
+
+.vaa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--lumo-space-s);
+}
+
+.vaa-actions:empty {
+  display: none;
+}
+
+.vaa-property {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lumo-space-xs);
+  margin-bottom: var(--lumo-space-s);
+  min-width: 0;
+}
+
+.vaa-property-label {
+  font-size: var(--lumo-font-size-s);
+  color: var(--lumo-secondary-text-color);
+}
+
+.vaa-property-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lumo-space-xs);
+  min-width: 0;
+}
+
+.vaa-chip {
+  background: var(--lumo-contrast-10pct);
+  border-radius: var(--lumo-border-radius-m);
+  padding: var(--lumo-space-xs) var(--lumo-space-s);
+  font-size: var(--lumo-font-size-s);
+  overflow-wrap: anywhere;
+}
+
+/* first grid column is the row's object: reads as the link into it */
+.vaa-title-cell {
+  color: var(--lumo-primary-text-color);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* navbar branding: shrinks with an ellipsis rather than pushing menus off-screen */
+.vaa-brand {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
