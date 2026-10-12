@@ -22,6 +22,7 @@ import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.collections.ImmutableEnumSet;
 import org.apache.causeway.commons.internal.reflection._GenericResolver.ResolvedMethod;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facets.propcoll.accessor.PropertyOrCollectionAccessorFacet;
 import org.apache.causeway.core.metamodel.methods.MethodPrefixBasedFacetFactoryAbstract;
@@ -50,14 +51,13 @@ implements AccessorFacetFactory {
 
     @Override
     public final void process(final ProcessMethodContext processMethodContext) {
-        var accessorMethod = processMethodContext.getMethod().asMethodElseFail();
+        var accessorMethod = processMethodContext.methodFacade().asMethodElseFail();
         processMethodContext.removeMethod(accessorMethod);
 
-        var cls = processMethodContext.getCls();
-        var typeSpec = getSpecificationLoader().loadSpecification(cls);
-        var facetHolder = processMethodContext.getFacetHolder();
+        var typeSpec = processMethodContext.loadSpecificationTypeOnly(processMethodContext.cls());
+        var facetHolder = processMethodContext.facetHolder();
 
-        addFacet(createFacet(typeSpec, accessorMethod, facetHolder));
+        createFacet(typeSpec, accessorMethod, facetHolder);
     }
 
     protected abstract PropertyOrCollectionAccessorFacet createFacet(

@@ -21,8 +21,6 @@ package org.apache.causeway.viewer.graphql.model.domain.common.query;
 import java.util.ArrayList;
 import java.util.List;
 
-import graphql.schema.DataFetchingEnvironment;
-
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
 import org.apache.causeway.viewer.graphql.model.context.Context;
 import org.apache.causeway.viewer.graphql.model.domain.Element;
@@ -30,6 +28,7 @@ import org.apache.causeway.viewer.graphql.model.domain.ElementCustom;
 import org.apache.causeway.viewer.graphql.model.domain.Parent;
 import org.apache.causeway.viewer.graphql.model.domain.common.SchemaStrategy;
 
+import graphql.schema.DataFetchingEnvironment;
 import lombok.Getter;
 
 public abstract class CommonTopLevelQueryAbstract
@@ -48,38 +47,36 @@ public abstract class CommonTopLevelQueryAbstract
         this.schemaStrategy = schemaStrategy;
 
         context.objectSpecifications().forEach(objectSpec -> {
-            switch (objectSpec.getBeanSort()) {
-
-                case ABSTRACT:
-                case VIEW_MODEL:
-                case ENTITY:
+            switch (objectSpec.beanSort()) {
+                case ABSTRACT, VIEW_MODEL, ENTITY -> {
                     var gqlvDomainObject = schemaStrategy.domainObjectFor(objectSpec, context);
                     addChildField(gqlvDomainObject.newField());
                     domainObjects.add(gqlvDomainObject);
-                    break;
-
+                }
+                default -> {}
             }
         });
 
         // add services to top-level query
         context.objectSpecifications().forEach(objectSpec -> {
-            switch (objectSpec.getBeanSort()) {
-                case MANAGED_BEAN_CONTRIBUTING: // @DomainService
+            switch (objectSpec.beanSort()) {
+                case MANAGED_BEAN_CONTRIBUTING -> { // @DomainService
                     context.serviceRegistry.lookupBeanById(objectSpec.logicalTypeName())
                             .ifPresent(servicePojo ->
                                     domainServices.add(
                                             addChildFieldFor(schemaStrategy.domainServiceFor(objectSpec, servicePojo, context))));
-                    break;
+                }
+                default -> {}
             }
         });
     }
 
     public static List<ObjectSpecification> superclassesOf(final ObjectSpecification objectSpecification) {
         var superclasses = new ArrayList<ObjectSpecification>();
-        ObjectSpecification superclass = objectSpecification.superclass();
-        while (superclass != null && superclass.getCorrespondingClass() != Object.class) {
+        ObjectSpecification superclass = objectSpecification.superSpec().orElse(null);
+        while (superclass != null && superclass.correspondingClass() != Object.class) {
             superclasses.add(0, superclass);
-            superclass = superclass.superclass();
+            superclass = superclass.superSpec().orElse(null);
         }
         return superclasses;
     }

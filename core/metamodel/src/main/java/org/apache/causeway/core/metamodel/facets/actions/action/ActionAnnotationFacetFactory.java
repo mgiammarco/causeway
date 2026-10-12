@@ -20,8 +20,6 @@ package org.apache.causeway.core.metamodel.facets.actions.action;
 
 import java.util.Optional;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.applib.annotation.Action;
 import org.apache.causeway.applib.annotation.SemanticsOf;
 import org.apache.causeway.applib.mixins.system.HasInteractionId;
@@ -43,6 +41,8 @@ import org.apache.causeway.core.metamodel.facets.members.layout.group.LayoutGrou
 import org.apache.causeway.core.metamodel.facets.members.publish.command.CommandPublishingFacetForActionAnnotation;
 import org.apache.causeway.core.metamodel.facets.members.publish.execution.ExecutionPublishingFacetForActionAnnotation;
 import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailureUtils;
+
+import jakarta.inject.Inject;
 
 public class ActionAnnotationFacetFactory
 extends FacetFactoryAbstract {
@@ -79,177 +79,160 @@ extends FacetFactoryAbstract {
                 .synthesizeOnMethodOrMixinType(
                         Action.class,
                         () -> ValidationFailureUtils
-                        .raiseAmbiguousMixinAnnotations(processMethodContext.getFacetHolder(), Action.class));
+                        .raiseAmbiguousMixinAnnotations(processMethodContext.facetHolder(), Action.class));
     }
 
     void processExplicit(final ProcessMethodContext processMethodContext, final Optional<Action> actionIfAny) {
-        var holder = processMethodContext.getFacetHolder();
+        var holder = processMethodContext.facetHolder();
 
         // check for @Action at all.
-        addFacetIfPresent(
-                ActionExplicitFacetForActionAnnotation
-                .create(actionIfAny, holder));
+        ActionExplicitFacetForActionAnnotation
+            .create(actionIfAny, holder);
     }
 
     void processDomainEvent(final ProcessMethodContext processMethodContext, final Optional<Action> actionIfAny) {
 
-        var actionMethod = processMethodContext.getMethod();
+        var actionMethod = processMethodContext.methodFacade();
 
         final boolean isAction = !processMethodContext.isMixinMain()
                 || actionIfAny.isPresent();
 
         try {
 
-            var typeSpec = getSpecificationLoader().loadSpecification(processMethodContext.getCls());
-            if(typeSpec==null) {
-                return;
-            }
+            var typeSpec = processMethodContext.loadSpecificationTypeOnly(processMethodContext.cls());
+            if(typeSpec==null)
+				return;
 
             var returnType = actionMethod.getReturnType();
-            var returnSpec = getSpecificationLoader().loadSpecification(returnType);
-            if (returnSpec == null) {
-                return;
-            }
-
-            var holder = processMethodContext.getFacetHolder();
+            var returnSpec = processMethodContext.loadSpecificationTypeOnly(returnType);
+            if (returnSpec == null)
+				return;
 
             //
             // Set up ActionDomainEventFacet, which will act as the hiding/disabling/validating advisor
             //
 
             // search for @Action(domainEvent=...), else use the default event type
-            var actionDomainEventFacet = ActionDomainEventFacet.create(actionIfAny, typeSpec, holder);
-            addFacet(actionDomainEventFacet);
+            var actionDomainEventFacet = ActionDomainEventFacet.create(actionIfAny, typeSpec, processMethodContext.facetHolder());
 
             // replace the current actionInvocationFacet with one that will
             // emit the appropriate domain event and then delegate onto the underlying
-            addFacet(
-                /* lazily binds the event-type to the actionDomainEventFacet,
-                 * such that any changes to the latter during post processing
-                 * are reflected here as well
-                 */
-                isAction
-                    ? new ActionInvocationFacetForAction(
-                            actionDomainEventFacet,
-                            actionMethod, typeSpec, returnSpec, holder)
-                    // when in a mixed-in prop/coll situation, the prop/coll event-type must be used instead
-                    : new ActionInvocationFacetForMixedInPropertyOrCollection(
-                            actionMethod, typeSpec, returnSpec, holder));
+            /* lazily binds the event-type to the actionDomainEventFacet,
+             * such that any changes to the latter during post processing
+             * are reflected here as well
+             */
+            @SuppressWarnings("unused")
+			var actionInvocationFacet = isAction
+                ? new ActionInvocationFacetForAction(
+                        actionDomainEventFacet,
+                        actionMethod, typeSpec, returnSpec, processMethodContext.facetHolder())
+                // when in a mixed-in prop/coll situation, the prop/coll event-type must be used instead
+                : new ActionInvocationFacetForMixedInPropertyOrCollection(
+                        actionMethod, typeSpec, returnSpec, processMethodContext.facetHolder());
         } finally {
             processMethodContext.removeMethod(actionMethod.asMethodForIntrospection());
         }
     }
 
     void processRestrictTo(final ProcessMethodContext processMethodContext, final Optional<Action> actionIfAny) {
-        var facetedMethod = processMethodContext.getFacetHolder();
+        var facetedMethod = processMethodContext.facetHolder();
 
         // search for @Action(restrictTo=...)
-        addFacetIfPresent(
-                PrototypeFacetForActionAnnotation
-                .create(
-                        actionIfAny, facetedMethod,
-                        ()->super.getSystemEnvironment().deploymentType()));
+        PrototypeFacetForActionAnnotation
+            .create(
+                    actionIfAny, facetedMethod,
+                    ()->super.getSystemEnvironment().deploymentType());
     }
 
     void processSemantics(final ProcessMethodContext processMethodContext, final Optional<Action> actionIfAny) {
-        var facetedMethod = processMethodContext.getFacetHolder();
+        var facetedMethod = processMethodContext.facetHolder();
 
         // check for @Action(semantics=...)
-        addFacet(
-            actionIfAny
-                .map(Action::semantics)
-                .filter(semanticsOf -> semanticsOf != SemanticsOf.NOT_SPECIFIED)
-                .map(semanticsOf -> new ActionSemanticsFacet("ActionAnnotation", semanticsOf, facetedMethod))
-                .orElseGet(()->new ActionSemanticsFacet("FallbackToNonIdempotent", SemanticsOf.NON_IDEMPOTENT, facetedMethod))
-        );
+        actionIfAny
+            .map(Action::semantics)
+            .filter(semanticsOf -> semanticsOf != SemanticsOf.NOT_SPECIFIED)
+            .map(semanticsOf -> new ActionSemanticsFacet("ActionAnnotation", semanticsOf, facetedMethod))
+            .orElseGet(()->new ActionSemanticsFacet("FallbackToNonIdempotent", SemanticsOf.NON_IDEMPOTENT, facetedMethod));
     }
 
     void processCommandPublishing(
             final ProcessMethodContext processMethodContext,
             final Optional<Action> actionIfAny) {
 
-        var facetedMethod = processMethodContext.getFacetHolder();
+        var facetedMethod = processMethodContext.facetHolder();
 
         //
         // this rule inspired by a similar rule for auditing and publishing, see DomainObjectAnnotationFacetFactory
         //
-        if(HasInteractionId.class.isAssignableFrom(processMethodContext.getCls())) {
-            // do not install on any implementation of HasInteractionId
+        if(HasInteractionId.class.isAssignableFrom(processMethodContext.cls()))
+			// do not install on any implementation of HasInteractionId
             // (ie commands, audit entries, published events).
             return;
-        }
 
         // check for @Action(commandPublishing=...)
-        addFacetIfPresent(CommandPublishingFacetForActionAnnotation
-                .create(actionIfAny, getConfiguration(), getServiceInjector(), facetedMethod));
+        CommandPublishingFacetForActionAnnotation
+            .create(actionIfAny, getConfiguration(), getServiceInjector(), facetedMethod);
     }
 
     void processExecutionPublishing(
             final ProcessMethodContext processMethodContext,
             final Optional<Action> actionIfAny) {
 
-        var facetedMethod = processMethodContext.getFacetHolder();
+        var facetedMethod = processMethodContext.facetHolder();
 
         //
         // this rule inspired by a similar rule for auditing and publishing,
         // see DomainObjectAnnotationFacetFactory
         // and for commands, see above
         //
-        if(HasInteractionId.class.isAssignableFrom(processMethodContext.getCls())) {
-            // do not install on any implementation of HasInteractionId
+        if(HasInteractionId.class.isAssignableFrom(processMethodContext.cls()))
+			// do not install on any implementation of HasInteractionId
             // (ie commands, audit entries, published events).
             return;
-        }
 
         // check for @Action(executionPublishing=...)
-        addFacetIfPresent(
-                ExecutionPublishingFacetForActionAnnotation
-                .create(actionIfAny, getConfiguration(), facetedMethod));
+
+        ExecutionPublishingFacetForActionAnnotation
+            .create(actionIfAny, getConfiguration(), facetedMethod);
 
     }
 
     void processTypeOf(final ProcessMethodContext processMethodContext, final Optional<Action> actionIfAny) {
 
-        var method = processMethodContext.getMethod();
-        var facetedMethod = processMethodContext.getFacetHolder();
+        var method = processMethodContext.methodFacade();
+        var facetedMethod = processMethodContext.facetHolder();
 
         var methodReturnType = method.getReturnType();
 
         CollectionSemantics.valueOf(methodReturnType)
-        .ifPresent(collectionType->{
-            addFacetIfPresent(
+        	.ifPresent(collectionType->{
                     TypeOfFacetForActionAnnotation.create(actionIfAny, collectionType, facetedMethod)
                     .or(
                         // else infer from generic type arg if any
                         ()->TypeOfFacet.inferFromMethodReturnType(method, facetedMethod)
-                        ));
-
-        });
+                    );
+        	});
     }
 
     void processChoicesFrom(final ProcessMethodContext processMethodContext, final Optional<Action> actionIfAny) {
 
-        var holder = processMethodContext.getFacetHolder();
+        var holder = processMethodContext.facetHolder();
 
         // check for @Action(choicesFrom=...)
-        addFacetIfPresent(
-                ChoicesFromFacetForActionAnnotation
-                .create(actionIfAny, holder));
+        ChoicesFromFacetForActionAnnotation
+            .create(actionIfAny, holder);
 
-        addFacetIfPresent(
-                LayoutGroupFacetForActionAnnotation
-                .create(actionIfAny, holder));
-
+        LayoutGroupFacetForActionAnnotation
+            .create(actionIfAny, holder);
     }
 
     void processFileAccept(final ProcessMethodContext processMethodContext, final Optional<Action> actionIfAny) {
 
-        var holder = processMethodContext.getFacetHolder();
+        var holder = processMethodContext.facetHolder();
 
         // check for @Action(fileAccept=...)
-        addFacetIfPresent(
-                FileAcceptFacetForActionAnnotation
-                .create(actionIfAny, holder));
+        FileAcceptFacetForActionAnnotation
+            .create(actionIfAny, holder);
     }
 
 }

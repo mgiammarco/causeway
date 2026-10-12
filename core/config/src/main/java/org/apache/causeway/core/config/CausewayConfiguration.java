@@ -438,6 +438,14 @@ public record CausewayConfiguration(
 
             public record DomainObject(
                 /**
+                 * Default locking policy for Causeway JPA bookmark loads.
+                 * Pessimistic loads require an active transaction and acquire a write lock.
+                 * Overridden by {@link DomainObject#locking()}.
+                 */
+                @DefaultValue("OPTIMISTIC")
+                DomainObjectConfigOptions.LockingPolicy locking,
+
+                /**
                  * The default for whether <i>domain entities</i> should be audited or not (meaning that any changes are
                  * sent through to {@link EntityChangesSubscriber}s and
                  * sent through to {@link EntityPropertyChangeSubscriber}.
@@ -1838,7 +1846,29 @@ public record CausewayConfiguration(
             @DefaultValue
             Translation translation,
             @DefaultValue
-            EntityPropertyChangePublisher entityPropertyChangePublisher) {
+            EntityPropertyChangePublisher entityPropertyChangePublisher,
+            @DefaultValue
+            CommandExecutorService commandExecutorService) {
+
+            /**
+             * Controls interaction-advisor checks performed when command DTOs are executed.
+             */
+            public record CommandExecutorService(
+                /**
+                 * Whether action and property interaction advisors are enforced, invoked but ignored, or skipped.
+                 */
+                @DefaultValue("NO_CHECK")
+                InteractionAdvisorPolicy interactionAdvisorPolicy) {
+
+                public enum InteractionAdvisorPolicy {
+                    /** Enforce visibility, usability, and validity vetoes. */
+                    CHECK,
+                    /** Invoke visibility, usability, and validity advisors but ignore their vetoes. */
+                    CHECK_BUT_IGNORE,
+                    /** Skip visibility, usability, and validity advisors. */
+                    NO_CHECK
+                }
+            }
 
             /**
              * Mail specific configuration in addition to Spring's <code>spring.mail.*</code>.
@@ -2362,6 +2392,12 @@ public record CausewayConfiguration(
             @DefaultValue
             ScalarMarshaller scalarMarshaller,
             @DefaultValue
+            Values values,
+            @DefaultValue
+            Collections collections,
+            @DefaultValue
+            Autocomplete autocomplete,
+            @DefaultValue
             Resources resources,
             @DefaultValue
             Authentication authentication
@@ -2571,9 +2607,83 @@ public record CausewayConfiguration(
             }
 
             /**
+             * Controls GraphQL behavior for values without an explicit marshaller or structured mapping.
+             */
+            public record Values(
+                    /**
+                     * How an unknown value is represented on output.
+                     * Input remains unsupported under every policy.
+                     */
+                    @DefaultValue("REDACTED")
+                    UnsupportedOutputPolicy unsupportedOutputPolicy) {
+
+                public enum UnsupportedOutputPolicy {
+                    /**
+                     * Return a constant non-disclosing unsupported representation without invoking the value's
+                     * {@code toString()} method.
+                     */
+                    REDACTED,
+                    /**
+                     * Temporarily retain the previous implicit GraphQL String serialization during migration.
+                     */
+                    LEGACY_STRING
+                }
+            }
+
+            /**
+             * Controls bounded rich GraphQL collection windows.
+             */
+            public record Collections(
+                    /**
+                     * Default row count used when a collection window omits its size.
+                     */
+                    @Min(value = 1)
+                    @DefaultValue("20")
+                    int defaultWindowSize,
+                    /**
+                     * Hard maximum row count accepted for one collection window.
+                     */
+                    @Min(value = 1)
+                    @DefaultValue("100")
+                    int maxWindowSize) {
+
+                public Collections {
+                    if (defaultWindowSize > maxWindowSize) {
+                        throw new IllegalArgumentException(
+                                "causeway.viewer.graphql.collections.default-window-size must not exceed max-window-size");
+                    }
+                }
+            }
+
+            /**
+             * Controls bounded rich GraphQL autocomplete response windows.
+             */
+            public record Autocomplete(
+                    /**
+                     * Default item count used when an autocomplete window omits its size.
+                     */
+                    @Min(value = 1)
+                    @DefaultValue("20")
+                    int defaultWindowSize,
+                    /**
+                     * Hard maximum item count accepted for one autocomplete window.
+                     */
+                    @Min(value = 1)
+                    @DefaultValue("100")
+                    int maxWindowSize) {
+
+                public Autocomplete {
+                    if (defaultWindowSize > maxWindowSize) {
+                        throw new IllegalArgumentException(
+                                "causeway.viewer.graphql.autocomplete.default-window-size must not exceed max-window-size");
+                    }
+                }
+            }
+
+            /**
              * The different ways in which resources ({@link org.apache.causeway.applib.value.Blob} bytes,
-             * {@link org.apache.causeway.applib.value.Clob} chars, grids and icons) can be downloaded from the
-             * resource controller.
+             * {@link org.apache.causeway.applib.value.Clob} chars, grids and icons) are made available.
+             * For Blob and Clob values this policy also gates bounded GraphQL input and action-result content.
              */
             public enum ResponseType {
                 /**
@@ -2581,7 +2691,8 @@ public record CausewayConfiguration(
                  *
                  * <p>In this case any {@link org.apache.causeway.applib.value.Blob} and
                  * {@link org.apache.causeway.applib.value.Clob} properties will <i>not</i> provide a link to
-                 * the URL.  Attempting to download from the resource controller will result in a 403 (forbidden).
+                 * the URL, resource input is unsupported, and action results remain metadata-only.
+                 * Attempting to download from the resource controller will result in a 403 (forbidden).
                  */
                 FORBIDDEN,
                 /**
@@ -2603,16 +2714,62 @@ public record CausewayConfiguration(
 
             public record Resources(
                 /**
-                 * How resources ({@link org.apache.causeway.applib.value.Blob} bytes,
-                 * {@link org.apache.causeway.applib.value.Clob} chars, grids and icons) can be downloaded from the
-                 * resource controller.
+                 * Compatibility setting used for a resource category whose category-specific response type is not
+                 * configured.
                  *
-                 * <p>By default the download of these resources if {@link ResponseType#FORBIDDEN}, but alternatively
-                 * they can be enabled to download either {@link ResponseType#DIRECT}ly or as an
-                 * {@link ResponseType#ATTACHMENT}.
+                 * <p>By default resources are {@link ResponseType#FORBIDDEN}.
+                 * Prefer {@link #structuralMetadataResponseType()} and {@link #valueContentResponseType()} for new
+                 * applications.
                  */
+                @Deprecated
                 @DefaultValue("FORBIDDEN")
-                ResponseType responseType) {
+                ResponseType responseType,
+                /**
+                 * How effective grids, icons, and other structural metadata resources are returned.
+                 * If unset, temporarily falls back to {@link #responseType()}.
+                 */
+                @Nullable
+                ResponseType structuralMetadataResponseType,
+                /**
+                 * How {@link org.apache.causeway.applib.value.Blob} bytes and
+                 * {@link org.apache.causeway.applib.value.Clob} characters are returned, and whether bounded
+                 * GraphQL resource input and action-result content are enabled.
+                 * If unset, temporarily falls back to {@link #responseType()}.
+                 */
+                @Nullable
+                ResponseType valueContentResponseType,
+                /**
+                 * Maximum decoded byte size accepted for inline Blob or UTF-8 Clob GraphQL input.
+                 */
+                @Min(value = 1)
+                @DefaultValue("1048576")
+                int inlineInputMaxBytes,
+                /**
+                 * Maximum byte size emitted inline for Blob or UTF-8 Clob action results.
+                 * Larger values remain metadata-only and property content continues to use secured resource links.
+                 */
+                @Min(value = 1)
+                @DefaultValue("1048576")
+                int inlineOutputMaxBytes,
+                /**
+                 * Optional externally visible path prefix for a deployment behind a path-rewriting reverse proxy.
+                 * The prefix is combined with the servlet context and configured GraphQL endpoint path when links are
+                 * published.
+                 */
+                @Nullable
+                String externalPathPrefix) {
+
+                public ResponseType effectiveStructuralMetadataResponseType() {
+                    return structuralMetadataResponseType != null
+                            ? structuralMetadataResponseType
+                            : Objects.requireNonNullElse(responseType, ResponseType.FORBIDDEN);
+                }
+
+                public ResponseType effectiveValueContentResponseType() {
+                    return valueContentResponseType != null
+                            ? valueContentResponseType
+                            : Objects.requireNonNullElse(responseType, ResponseType.FORBIDDEN);
+                }
             }
 
             public record Authentication(
@@ -2762,6 +2919,17 @@ public record CausewayConfiguration(
              */
             @DefaultValue("true")
             boolean actionColumnEnabled,
+
+            /**
+             * Whether the collection &quot;summary&quot; view (which totals the <code>BigDecimal</code> columns of
+             * the collection's element type) should be disabled.
+             *
+             * <p>When <code>true</code>, the summary view is never offered, even for collections whose element type
+             * has a <code>BigDecimal</code> property. Defaults to <code>false</code> (the summary view applies as
+             * before).
+             */
+            @DefaultValue("false")
+            boolean summaryViewDisabled,
 
             /**
              * Whether actions, that on click will show a dialog,
@@ -3388,71 +3556,24 @@ public record CausewayConfiguration(
              *
              * <p>If this flag is set, then the {@link Digits#fraction()} annotation or the JPA equivalent {@link Column#scale()}) should be used for the
              * <code>MinFractionalFacet</code> as well as the <code>MaxFractionalFacet</code>.
-             * </p>
              *
-             * <p>
-             * What this means in practice is that a numeric values will be rendered to the same number of fractional
+             * <p>What this means in practice is that numeric values will be rendered to the same number of fractional
              * digits, irrespective of whether they are whole numbers or fractional.  For example, with a scale of 2,
              * then '123.4532' will be rendered as '123.45', while '123' will be rendered
              * as '123.00'.
-             * </p>
              *
-             * <p>
-             *If this flag is NOT set, or if it is set but there is no annotation, then the {@link Display#minScale} config
+             * <p>If this flag is NOT set, or if it is set but there is no annotation, then the {@link Display#minScale} config
              * property is used as a fallback.
-             * </p>
              *
-             * <p>
-             * If there is no fallback, then it means that a big decimal such as '123.00' will be presented as
+             * <p>If there is no fallback, then it means that a big decimal such as '123.00' will be presented as
              * just '123' (that is, the shortest possible textual representation).
-             * </p>
              */
             @DefaultValue("true")
             boolean useScaleForMinFractionalFacet,
 
             @DefaultValue
-            Editing editing,
-            @DefaultValue
             Display display
             ) {
-
-            public record Editing(
-                /**
-                 * A common use of {@link java.math.BigDecimal} is as a money value.  In some locales (eg English), the
-                 * ',' (comma) is the grouping (thousands) separator while the '.' (period) acts as a
-                 * decimal point, but in others (eg France, Italy) it is the other way around.
-                 *
-                 * <p>
-                 * Surprisingly perhaps, a string such as "123,99", when parsed ((by {@link java.text.DecimalFormat})
-                 * in an English locale, is not rejected but instead is evaluated as the value 12399L.  That's almost
-                 * certainly not what the end-user would have expected, and results in a money value 100x too large.
-                 * </p>
-                 *
-                 * <p>
-                 * The purpose of this configuration property is to remove the confusion by simply disallowing the
-                 * thousands separator from being part of the input string.
-                 * </p>
-                 *
-                 * <p>
-                 * For maximum safety, allowing the grouping separator is disallowed, but the alternate (original)
-                 * behaviour can be reinstated by setting this config property back to <code>true</code>.
-                 * </p>
-                 *
-                 * <p>
-                 * The same configuration property is also used for rendering the value.
-                 * </p>
-                 *
-                 * @see Display#isUseGroupingSeparator()
-                 */
-                @DefaultValue("false")
-                boolean useGroupingSeparator,
-                /**
-                 * When a BigDecimal is presented for editing, whether it should enforce the scale, possibly meaning
-                 * trailing '0's to pad).  This is probably appropriate for BigDecimals that represent a money amount.
-                 */
-                @DefaultValue("false")
-                boolean preserveScale) {
-            }
 
             public record Display(
                 /**
@@ -3463,16 +3584,7 @@ public record CausewayConfiguration(
                  * either {@link Digits#fraction()} or an ORM semantic such as the (JPA) {@link Column#scale()}.
                  * </p>
                  */
-                Integer minScale,
-
-                /**
-                 * Whether to use a grouping (thousands) separator (eg the ',' (comma) in the English locale)
-                 * when rendering a big decimal.
-                 *
-                 * @see org.apache.causeway.core.config.CausewayConfiguration.ValueTypes.BigDecimal.Editing#useGroupingSeparator()
-                 */
-                @DefaultValue("true")
-                boolean useGroupingSeparator) {
+                Integer minScale) {
             }
 
         }
@@ -3707,8 +3819,50 @@ public record CausewayConfiguration(
              */
             @DefaultValue("ENABLED")
             PersistPolicy persist,
+            /**
+             * Whether command recording support is enabled.
+             *
+             * <p>When enabled, ordinary safe actions and property edits become eligible for the normal command-publishing lifecycle.
+             * Eligible parented collections and scalar domain-object references also gain deterministic safe {@code Navigate To} actions whose ids start with {@code __causeway_navigate_to_}.
+             * Collection navigation parameters follow visible collection columns and identify exactly one child; reference navigation returns the referenced object.
+             * An explicit safe-action publishing disablement remains an opt-out, while property edits are included even when property command publishing is explicitly disabled so replay recordings remain complete.
+             * Targets and member owners implementing {@code CommandRecordingSuppressed} remain excluded, including from synthetic navigation action creation.
+             * Disabled by default to preserve existing command-publishing and association-navigation behavior.
+             */
+            @DefaultValue("DISABLED")
+            RecordingSupport recordingSupport,
+            @DefaultValue
+            ReplayResultMapping replayResultMapping,
             @DefaultValue
             RunBackgroundCommands runBackgroundCommands) {
+
+            /**
+             * Configures the built-in command replay result mapping listener.
+             */
+            public record ReplayResultMapping(
+                /**
+                 * Storage strategy for the built-in listener.
+                 * Persistent storage requires the commandlog JPA persistence module or an
+                 * application-provided replay-result mapping repository.
+                 */
+                @DefaultValue("IN_MEMORY")
+                StorageStrategy storageStrategy,
+                /**
+                 * Behavior when a recorded bookmark is observed with a different actual bookmark after already being mapped.
+                 */
+                @DefaultValue("THROW_EXCEPTION")
+                OnConflictPolicy onConflictPolicy) {
+
+                public enum StorageStrategy {
+                    IN_MEMORY,
+                    PERSISTENT
+                }
+
+                public enum OnConflictPolicy {
+                    THROW_EXCEPTION,
+                    LOG_AND_CONTINUE
+                }
+            }
 
             /**
              * As per {@link CommandLog#persist()}.
@@ -3723,6 +3877,23 @@ public record CausewayConfiguration(
                 ENABLED,
                 /**
                  * Do <i>NOT</i> persist to the command log.
+                 */
+                DISABLED;
+
+                public boolean isEnabled() { return this == ENABLED; }
+                public boolean isDisabled() { return this == DISABLED; }
+            }
+
+            /**
+             * As per {@link CommandLog#recordingSupport()}.
+             */
+            public enum RecordingSupport {
+                /**
+                 * Enable command recording support.
+                 */
+                ENABLED,
+                /**
+                 * Disable command recording support.  This is the default.
                  */
                 DISABLED;
 

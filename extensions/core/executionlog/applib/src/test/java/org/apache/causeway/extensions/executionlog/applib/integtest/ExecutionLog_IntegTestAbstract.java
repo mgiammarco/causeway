@@ -18,18 +18,12 @@
  */
 package org.apache.causeway.extensions.executionlog.applib.integtest;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import jakarta.inject.Inject;
-
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.causeway.applib.clock.VirtualClock;
 import org.apache.causeway.applib.mixins.system.DomainChangeRecord;
@@ -53,6 +47,11 @@ import org.apache.causeway.schema.ixn.v2.ActionInvocationDto;
 import org.apache.causeway.schema.ixn.v2.InteractionDto;
 import org.apache.causeway.schema.ixn.v2.PropertyEditDto;
 import org.apache.causeway.testing.integtestsupport.applib.CausewayIntegrationTestAbstract;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import jakarta.inject.Inject;
 
 public abstract class ExecutionLog_IntegTestAbstract extends CausewayIntegrationTestAbstract {
 
@@ -64,7 +63,8 @@ public abstract class ExecutionLog_IntegTestAbstract extends CausewayIntegration
     Counter counter1;
     Counter counter2;
 
-    @BeforeEach
+    @SuppressWarnings("unchecked")
+	@BeforeEach
     void beforeEach() {
 
         counterRepository.removeAll();
@@ -322,10 +322,12 @@ public abstract class ExecutionLog_IntegTestAbstract extends CausewayIntegration
         counter1 = counterRepository.findByName("counter-1");
         executionTarget1User1 = executionTarget1User1ById.get();
         executionTarget1User2 = executionTarget1User2ById.get();
-        var executionTarget1User1Yesterday = executionTarget1User1YesterdayById.get();
+        @SuppressWarnings("unused")
+		var executionTarget1User1Yesterday = executionTarget1User1YesterdayById.get();
         executionTarget2User1 = executionTarget2User1ById.get();
 
-        var target1 = executionTarget1User1.getTarget();
+        @SuppressWarnings("unused")
+		var target1 = executionTarget1User1.getTarget();
         var username1 = executionTarget1User1.getUsername();
         Timestamp from1 = executionTarget1User1.getStartedAt();
         Timestamp to1 = Timestamp.valueOf(from1.toLocalDateTime().plusDays(1));
@@ -386,7 +388,8 @@ public abstract class ExecutionLog_IntegTestAbstract extends CausewayIntegration
     @Inject ClockService clockService;
     @Inject InteractionService interactionService;
     @Inject InteractionLayerTracker interactionLayerTracker;
-    @Inject CounterRepository counterRepository;
+    @SuppressWarnings("rawtypes")
+	@Inject CounterRepository counterRepository;
     @Inject WrapperFactory wrapperFactory;
     @Inject BookmarkService bookmarkService;
 

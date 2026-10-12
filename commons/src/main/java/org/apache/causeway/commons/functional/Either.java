@@ -19,12 +19,15 @@
 package org.apache.causeway.commons.functional;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The {@link Either} type represents a value of one of two possible types (a disjoint union),
@@ -174,6 +177,39 @@ permits Either.Left, Either.Right {
             rightConsumer.accept(_right);
         }
 
+    }
+
+    // -- STREAM UTIL
+
+    /**
+     * Folds elements of a {@link Stream} of {@link Either} resulting in a new {@link Stream} of type T.
+     * The resulting stream is guaranteed to not contain <code>null</code> elements,
+     * that is, if any of the mappers maps to null, the element is ignored.
+     *
+     * <p> Absence of the leftMapper results in LEFT elements being ignored
+     * and absence of the rightMapper results in RIGHT elements being ignored.
+     *
+     * @param <L> Left Type
+     * @param <R> Right Type
+     * @param <T> Result Type
+     */
+    public static <L, R, T> Stream<T> foldStream(
+    		final @Nullable Stream<Either<L, R>> inputStream,
+    		final @Nullable Function<L, T> leftMapper,
+            final @Nullable Function<R, T> rightMapper) {
+    	if(inputStream==null
+    			|| (leftMapper==null && rightMapper==null))
+    		return Stream.empty();
+    	final Function<L, T> leftMapperNonNull = leftMapper!=null
+			? leftMapper
+			: (final L left) -> null;
+		final Function<R, T> rightMapperNonNull = rightMapper!=null
+			? rightMapper
+			: (final R right) -> null;
+        return inputStream
+    		.filter(Objects::nonNull) // skip null elements of the input stream
+    		.map(either->either.fold(leftMapperNonNull, rightMapperNonNull))
+    		.filter(Objects::nonNull);
     }
 
 //    // -- TYPE COMPOSITION

@@ -26,7 +26,6 @@ import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.consent.Consent.VetoReason;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
-import org.apache.causeway.core.metamodel.facetapi.FacetUtil;
 import org.apache.causeway.core.metamodel.facets.actcoll.typeof.TypeOfFacet;
 import org.apache.causeway.core.metamodel.facets.all.named.MemberNamedFacet;
 import org.apache.causeway.core.metamodel.facets.all.named.MemberNamedFacetForStaticMemberName;
@@ -41,6 +40,7 @@ import org.apache.causeway.core.metamodel.spec.feature.MixedInMember;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
 
 import lombok.Getter;
+import lombok.experimental.Accessors;
 
 class OneToManyAssociationMixedIn
 extends OneToManyAssociationDefault
@@ -70,13 +70,13 @@ implements MixedInMember {
      * Hold facets rather than delegate to the mixin action (different types might use layout metadata to position
      * the mixin in different ways)
      */
-    @Getter(onMethod = @__(@Override))
+    @Getter(onMethod_ = {@Override}) @Accessors(fluent = true)
     private final FacetHolder facetHolder;
 
     private static ObjectSpecification typeOfSpec(
             final ObjectActionDefault objectAction) {
 
-        var actionTypeOfFacet = objectAction.getFacet(TypeOfFacet.class);
+        var actionTypeOfFacet = objectAction.lookupFacet(TypeOfFacet.class).orElse(null);
         // TODO: a bit of a hack; ought really to set up a fallback TypeOfFacetDefault,
         // which ensures that there is always a TypeOfFacet for any mixedIn associations
         // created from mixin actions.
@@ -84,7 +84,7 @@ implements MixedInMember {
                 ? actionTypeOfFacet.value().elementType()
                 : (Class<?>)Object.class;
 
-        return objectAction.specLoaderInternal().loadSpecification(type);
+        return objectAction.specLoaderInternal().loadSpecificationTypeOnly(type);
     }
 
     public OneToManyAssociationMixedIn(
@@ -107,8 +107,8 @@ implements MixedInMember {
         //
         // ensure the mixedIn collection cannot be modified, and infer its TypeOfFaccet
         //
-        FacetUtil.addFacet(new SnapshotExcludeFacetFromImmutableMember(this));
-        FacetUtil.addFacet(disabledFacet());
+        new SnapshotExcludeFacetFromImmutableMember(this);
+        disabledFacet();
 
         // adjust name if necessary
         var isExplicitlyNamed = lookupNonFallbackFacet(MemberNamedFacet.class)
@@ -116,8 +116,7 @@ implements MixedInMember {
 
         if(!isExplicitlyNamed) {
             String memberName = _MixedInMemberNamingStrategy.mixinFriendlyName(mixinAction);
-            FacetUtil.addFacet(
-                    new MemberNamedFacetForStaticMemberName(memberName, facetHolder));
+            new MemberNamedFacetForStaticMemberName(memberName, facetHolder);
         }
 
     }
@@ -129,11 +128,10 @@ implements MixedInMember {
     }
 
     private DisabledFacet disabledFacet() {
-        final DisabledFacet originalFacet = facetHolder.getFacet(DisabledFacet.class);
+        final DisabledFacet originalFacet = facetHolder.lookupFacet(DisabledFacet.class).orElse(null);
         if( originalFacet != null &&
-                originalFacet.where().isAlways()) {
-            return originalFacet;
-        }
+                originalFacet.where().isAlways())
+			return originalFacet;
         // ensure that the contributed association is always disabled
         return new DisabledFacetForContributee(VetoReason.mixedinCollection(), this);
     }
@@ -183,7 +181,7 @@ implements MixedInMember {
             final ObjectActionDefault mixinAction) {
         return Identifier.collectionIdentifier(
                 LogicalType.eager(
-                        mixeeSpec.getCorrespondingClass(),
+                        mixeeSpec.correspondingClass(),
                         mixeeSpec.logicalTypeName()),
                 _MixedInMemberNamingStrategy.mixinMemberId(mixinAction));
     }

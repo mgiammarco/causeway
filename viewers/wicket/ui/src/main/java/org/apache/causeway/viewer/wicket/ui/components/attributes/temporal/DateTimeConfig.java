@@ -37,6 +37,7 @@ import tools.jackson.databind.annotation.JsonSerialize;
  * JavaScript widget
  * @see DatetimePickerConfig
  */
+@SuppressWarnings("deprecation") // it seems, nothing we can do about deprecations, hence suppress
 public class DateTimeConfig extends AbstractConfig {
     private static final long serialVersionUID = 1L;
 
@@ -58,15 +59,15 @@ public class DateTimeConfig extends AbstractConfig {
      */
     private static final IKey<Boolean> KeepOpen = newKey("keepOpen", false);
 
-    /**
-     * The earliest date that may be selected; all earlier dates will be disabled.
-     */
-    private static final IKey<String> StartDate = newKey("startDate", null);
-
-    /**
-     * The latest date that may be selected; all later dates will be disabled.
-     */
-    private static final IKey<String> EndDate = newKey("endDate", null);
+//    /**
+//     * The earliest date that may be selected; all earlier dates will be disabled.
+//     */
+//    private static final IKey<String> StartDate = newKey("startDate", null);
+//
+//    /**
+//     * The latest date that may be selected; all later dates will be disabled.
+//     */
+//    private static final IKey<String> EndDate = newKey("endDate", null);
 
     /**
      * The view that the datepicker should show when it is opened. Accepts values of

@@ -56,7 +56,7 @@ under the License.
 			<artifactId>causeway-testing-fixtures-applib</artifactId>
 			<scope>test</scope>
 		</dependency>
-		
+
 		<!-- PERSISTENCE -->
 
         <dependency>

@@ -20,17 +20,31 @@ package org.apache.causeway.core.runtimeservices.transaction;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.LongAdder;
 
-import jakarta.annotation.Priority;
-import jakarta.inject.Inject;
-import jakarta.inject.Named;
-import jakarta.inject.Provider;
-
+import org.apache.causeway.applib.annotation.PriorityPrecedence;
+import org.apache.causeway.applib.services.iactn.Interaction;
+import org.apache.causeway.applib.services.iactn.InteractionContext;
+import org.apache.causeway.applib.services.xactn.TransactionId;
+import org.apache.causeway.applib.services.xactn.TransactionService;
+import org.apache.causeway.applib.services.xactn.TransactionState;
+import org.apache.causeway.commons.collections.Can;
+import org.apache.causeway.commons.functional.ThrowingRunnable;
+import org.apache.causeway.commons.functional.Try;
+import org.apache.causeway.commons.internal.debug._Probe;
+import org.apache.causeway.commons.internal.exceptions._Exceptions;
+import org.apache.causeway.commons.internal.observation.ObservationClosure;
+import org.apache.causeway.core.config.observation.CausewayObservationIntegration;
+import org.apache.causeway.core.config.observation.CausewayObservationIntegration.ObservationProvider;
+import org.apache.causeway.core.metamodel.CausewayModuleCoreMetamodel;
+import org.apache.causeway.core.metamodel.execution.InteractionLayerTracker;
+import org.apache.causeway.core.runtime.flushmgmt.FlushMgmt;
+import org.apache.causeway.core.runtimeservices.CausewayModuleCoreRuntimeServices;
+import org.apache.causeway.core.transaction.events.TransactionCompletionStatus;
 import org.jspecify.annotations.NonNull;
-
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -44,27 +58,10 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import org.apache.causeway.applib.annotation.PriorityPrecedence;
-import org.apache.causeway.applib.services.iactn.Interaction;
-import org.apache.causeway.applib.services.iactn.InteractionContext;
-import org.apache.causeway.applib.services.xactn.TransactionId;
-import org.apache.causeway.applib.services.xactn.TransactionService;
-import org.apache.causeway.applib.services.xactn.TransactionState;
-import org.apache.causeway.commons.collections.Can;
-import org.apache.causeway.commons.functional.ThrowingRunnable;
-import org.apache.causeway.commons.functional.Try;
-import org.apache.causeway.commons.internal.base._NullSafe;
-import org.apache.causeway.commons.internal.debug._Probe;
-import org.apache.causeway.commons.internal.exceptions._Exceptions;
-import org.apache.causeway.commons.internal.observation.ObservationClosure;
-import org.apache.causeway.core.config.observation.CausewayObservationIntegration;
-import org.apache.causeway.core.config.observation.CausewayObservationIntegration.ObservationProvider;
-import org.apache.causeway.core.metamodel.CausewayModuleCoreMetamodel;
-import org.apache.causeway.core.metamodel.execution.InteractionLayerTracker;
-import org.apache.causeway.core.runtime.flushmgmt.FlushMgmt;
-import org.apache.causeway.core.runtimeservices.CausewayModuleCoreRuntimeServices;
-import org.apache.causeway.core.transaction.events.TransactionCompletionStatus;
-
+import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.inject.Provider;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -153,9 +150,8 @@ implements
             // return the original failure cause (originating from calling the callable)
             // (so we don't shadow the original failure)
             // return the failure we just caught
-            if (result != null && result.isFailure()) {
+            if (result != null && result.isFailure())
 				return result;
-			}
 
             // otherwise, we thought we had a success, but now we have an exception thrown by either ,
             // the call to rollback or commit above.  We don't need to do anything though; if either of
@@ -192,9 +188,8 @@ implements
 
             var translatedEx = translateExceptionIfPossible(ex, txManager);
 
-            if(translatedEx instanceof RuntimeException) {
+            if(translatedEx instanceof RuntimeException)
 				throw ex;
-			}
 
             throw new RuntimeException(ex);
 
@@ -217,11 +212,10 @@ implements
         return currentTransactionStatus()
         .map(txStatus->{
 
-            if(txStatus.isCompleted()) {
+            if(txStatus.isCompleted())
 				return txStatus.isRollbackOnly()
                         ? TransactionState.ABORTED
                         : TransactionState.COMMITTED;
-			}
 
             return txStatus.isRollbackOnly()
                     ? TransactionState.MUST_ABORT
@@ -236,16 +230,15 @@ implements
     // TODO: this ThreadLocal (as with all thread-locals) should perhaps somehow be managed using
     //  TransactionSynchronizationManager; see its javadoc for more details and look at implementations of
     //  TransactionSynchronization
-    private ThreadLocal<LongAdder> txCounter = ThreadLocal.withInitial(LongAdder::new);
+    private final ThreadLocal<LongAdder> txCounter = ThreadLocal.withInitial(LongAdder::new);
 
     // -- SPRING INTEGRATION
 
     private PlatformTransactionManager transactionManagerForElseFail(final TransactionDefinition def) {
         if(def instanceof TransactionTemplate) {
             var txManager = ((TransactionTemplate)def).getTransactionManager();
-            if(txManager!=null) {
+            if(txManager!=null)
 				return txManager;
-			}
         }
         return platformTransactionManagers.getSingleton()
                 .orElseThrow(()->
@@ -272,9 +265,8 @@ implements
         txTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_MANDATORY);
 
         // not strictly required, but to prevent stack-trace creation later on
-        if(!TransactionSynchronizationManager.isActualTransactionActive()) {
+        if(!TransactionSynchronizationManager.isActualTransactionActive())
 			return Optional.empty();
-		}
 
         // get current transaction else throw an exception
         return Try.call(()->
@@ -286,22 +278,20 @@ implements
 
     private Throwable translateExceptionIfPossible(final Throwable ex, final PlatformTransactionManager txManager) {
 
-        if(ex instanceof DataAccessException) {
+        if(ex instanceof DataAccessException)
 			return ex; // nothing to do, already translated
-		}
 
         if(ex instanceof RuntimeException) {
 
             var translatedEx = persistenceExceptionTranslators.stream()
             //debug .peek(translator->System.out.printf("%s%n", translator.getClass().getName()))
             .map(translator->translator.translateExceptionIfPossible((RuntimeException)ex))
-            .filter(_NullSafe::isPresent)
+            .filter(Objects::nonNull)
             .findFirst()
             .orElse(null);
 
-            if(translatedEx!=null) {
+            if(translatedEx!=null)
 				return translatedEx;
-			}
 
         }
 
@@ -317,15 +307,14 @@ implements
     public void onOpen(final @NonNull Interaction interaction) {
 
         txCounter.get().reset();
-        if (platformTransactionManagers.isEmpty()) {
+        if (platformTransactionManagers.isEmpty())
 			return;
-		}
 
         if (log.isDebugEnabled()) {
             log.debug("opening on {}", _Probe.currentThreadId());
         }
 
-        var onCloseHandle = new OnCloseHandle(new ArrayList<>(platformTransactionManagers.size()), new ObservationClosure());
+        var onCloseHandle = new OnCloseHandle(new ArrayList<>(platformTransactionManagers.size()), new ArrayList<>());
         interaction.putAttribute(OnCloseHandle.class, onCloseHandle);
 
         platformTransactionManagers.forEach(txManager -> {
@@ -333,7 +322,10 @@ implements
             var txDefn = new TransactionTemplate(txManager); // specify the txManager in question
             txDefn.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
 
-            var obs = onCloseHandle.observationClosure().startAndOpenScope(observationProvider.get("Transaction"))
+            var observationClosure = new ObservationClosure();
+            onCloseHandle.observationClosures().add(observationClosure);
+            @SuppressWarnings("unused")
+			var obs = observationClosure.startAndOpenScope(observationProvider.get("Transaction"))
                 .observation()
                 .highCardinalityKeyValue("txManager", txManager.getClass().getName());
 
@@ -342,7 +334,7 @@ implements
                     .observe(()->txManager.getTransaction(txDefn));
             if(!txStatus.isNewTransaction()) {
                 // discard telemetry data when participating in existing transaction
-                onCloseHandle.observationClosure().discard();
+                observationClosure.discard();
                 // we are participating in an exiting transaction (or testing), nothing to do
                 return;
             }
@@ -415,7 +407,7 @@ implements
 
     private record OnCloseHandle(
             List<CloseTask> onCloseTasks,
-            ObservationClosure observationClosure) {
+            List<ObservationClosure> observationClosures) {
 
         void requestRollback() {
             onCloseTasks.forEach(onCloseTask->{
@@ -435,7 +427,18 @@ implements
                             ex);
                 }
             });
-            observationClosure.close();
+            Throwable failure = null;
+            for (int i = observationClosures.size() - 1; i >= 0; --i) {
+                try {
+                    observationClosures.get(i).close();
+                } catch (RuntimeException | Error ex) {
+                    if (failure == null) failure = ex;
+                    else if (failure != ex) failure.addSuppressed(ex);
+                }
+            }
+            observationClosures.clear();
+            if (failure instanceof RuntimeException ex) throw ex;
+            if (failure instanceof Error ex) throw ex;
         }
     }
 }

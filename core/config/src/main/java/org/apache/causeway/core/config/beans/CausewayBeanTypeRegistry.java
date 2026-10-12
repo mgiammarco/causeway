@@ -23,15 +23,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import org.jspecify.annotations.Nullable;
-
 import org.apache.causeway.applib.annotation.HomePage;
 import org.apache.causeway.applib.annotation.Programmatic;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.internal.reflection._ClassCache;
 import org.apache.causeway.core.config.beans.CausewayBeanMetaData.PersistenceStack;
-
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Holds discovered domain types grouped by bean-sort.
@@ -71,7 +69,7 @@ public class CausewayBeanTypeRegistry {
 
         scannedTypes.forEach(typeMeta->{
 
-            var cls = typeMeta.getCorrespondingClass();
+            var cls = typeMeta.correspondingClass();
 
             scannedTypesByClass.put(cls, typeMeta);
 
@@ -134,14 +132,14 @@ public class CausewayBeanTypeRegistry {
         if(selectedStack==null || !selectedStack.isPresent()) return Stream.empty();
         return entities.stream()
                 .filter(typeMeta->typeMeta.persistenceStack()==selectedStack)
-                .<Class<?>>map(CausewayBeanMetaData::getCorrespondingClass);
+                .<Class<?>>map(CausewayBeanMetaData::correspondingClass);
     }
 
     // -- LOOKUP
 
     public Optional<String> lookupDomainServiceNameForType(final Class<?> type) {
         return Optional.ofNullable(domainServices.get(type))
-                .map(CausewayBeanMetaData::getBeanName);
+                .map(CausewayBeanMetaData::beanName);
     }
 
     public boolean containsManagedBeansContributing(final @NonNull Class<?> type) {

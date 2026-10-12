@@ -48,6 +48,7 @@ import org.apache.causeway.applib.annotation.Introspection.MemberAnnotationPolic
 import org.apache.causeway.applib.annotation.ObjectSupport;
 import org.apache.causeway.applib.annotation.ObjectSupport.IconSize;
 import org.apache.causeway.applib.id.LogicalType;
+import org.apache.causeway.applib.services.factory.FactoryService;
 import org.apache.causeway.applib.services.jaxb.JaxbService;
 import org.apache.causeway.applib.services.metamodel.BeanSort;
 import org.apache.causeway.applib.services.metamodel.Config;
@@ -111,6 +112,8 @@ import org.apache.causeway.testdomain.model.good.ProperMixinContribution_action3
 import org.apache.causeway.testdomain.model.good.ProperMixinContribution_action4;
 import org.apache.causeway.testdomain.model.good.ProperMixinContribution_action5;
 import org.apache.causeway.testdomain.model.good.ProperMixinContribution_action6;
+import org.apache.causeway.testdomain.model.good.ProperMixinContribution_actionRecord1;
+import org.apache.causeway.testdomain.model.good.ProperMixinContribution_actionRecord2;
 import org.apache.causeway.testdomain.model.good.ProperObjectWithAlias;
 import org.apache.causeway.testdomain.model.good.ProperRecordAsViewModelWithAnnotationsOptional;
 import org.apache.causeway.testdomain.model.good.ProperRecordAsViewModelWithAnnotationsRequired;
@@ -153,6 +156,7 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
     @Inject private SpecificationLoader specificationLoader;
     @Inject private TitleService titleService;
     @Inject private DomainObjectTesterFactory testerFactory;
+    @Inject private FactoryService factoryService;
 
     void debug() {
         var config = Config.builder().build()
@@ -390,8 +394,8 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         var concreteColl = vmSpec.getCollectionElseFail("concreteColl");
         var concreteCollSpec = concreteColl.getElementType();
 
-        assertEquals(ElementTypeConcrete.class, concreteCollSpec.getCorrespondingClass());
-        assertEquals(BeanSort.VIEW_MODEL, concreteCollSpec.getBeanSort());
+        assertEquals(ElementTypeConcrete.class, concreteCollSpec.correspondingClass());
+        assertEquals(BeanSort.VIEW_MODEL, concreteCollSpec.beanSort());
         assertHasAction(concreteCollSpec, "abstractAction");
         assertHasAction(concreteCollSpec, "interfaceAction");
         assertHasProperty(concreteCollSpec, "abstractProp");
@@ -400,16 +404,16 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         var interfaceColl = vmSpec.getCollectionElseFail("interfaceColl");
         var interfaceCollSpec = interfaceColl.getElementType();
 
-        assertEquals(ElementTypeInterface.class, interfaceCollSpec.getCorrespondingClass());
-        assertEquals(BeanSort.ABSTRACT, interfaceCollSpec.getBeanSort());
+        assertEquals(ElementTypeInterface.class, interfaceCollSpec.correspondingClass());
+        assertEquals(BeanSort.ABSTRACT, interfaceCollSpec.beanSort());
         assertHasAction(interfaceCollSpec, "interfaceAction");
         assertHasProperty(interfaceCollSpec, "interfaceProp");
 
         var abstractColl = vmSpec.getCollectionElseFail("abstractColl");
         var abstractCollSpec = abstractColl.getElementType();
 
-        assertEquals(ElementTypeAbstract.class, abstractCollSpec.getCorrespondingClass());
-        assertEquals(BeanSort.ABSTRACT, abstractCollSpec.getBeanSort());
+        assertEquals(ElementTypeAbstract.class, abstractCollSpec.correspondingClass());
+        assertEquals(BeanSort.ABSTRACT, abstractCollSpec.beanSort());
         assertHasAction(abstractCollSpec, "abstractAction");
         assertHasProperty(abstractCollSpec, "abstractProp");
     }
@@ -429,8 +433,8 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         var interfaceSet = vmSpec.getCollectionElseFail("setOfInterfaceType");
         var interfaceSetSpec = interfaceSet.getElementType();
 
-        assertEquals(ElementTypeInterface.class, interfaceSetSpec.getCorrespondingClass());
-        assertEquals(BeanSort.ABSTRACT, interfaceSetSpec.getBeanSort());
+        assertEquals(ElementTypeInterface.class, interfaceSetSpec.correspondingClass());
+        assertEquals(BeanSort.ABSTRACT, interfaceSetSpec.beanSort());
 
         //TODO scenario 2
 
@@ -443,8 +447,8 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         var interfaceIter = vmSpec.getCollectionElseFail("immutableOfInterfaceType");
         var interfaceIterSpec = interfaceIter.getElementType();
 
-        assertEquals(ElementTypeInterface.class, interfaceIterSpec.getCorrespondingClass());
-        assertEquals(BeanSort.ABSTRACT, interfaceIterSpec.getBeanSort());
+        assertEquals(ElementTypeInterface.class, interfaceIterSpec.correspondingClass());
+        assertEquals(BeanSort.ABSTRACT, interfaceIterSpec.beanSort());
 
     }
 
@@ -458,8 +462,8 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         var concreteColl = vmSpec.getCollectionElseFail("concreteColl2");
         var concreteCollSpec = concreteColl.getElementType();
 
-        assertEquals(ElementTypeConcrete.class, concreteCollSpec.getCorrespondingClass());
-        assertEquals(BeanSort.VIEW_MODEL, concreteCollSpec.getBeanSort());
+        assertEquals(ElementTypeConcrete.class, concreteCollSpec.correspondingClass());
+        assertEquals(BeanSort.VIEW_MODEL, concreteCollSpec.beanSort());
         assertHasAction(concreteCollSpec, "abstractAction");
         assertHasAction(concreteCollSpec, "interfaceAction");
         assertHasProperty(concreteCollSpec, "abstractProp");
@@ -468,16 +472,16 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         var interfaceColl = vmSpec.getCollectionElseFail("interfaceColl2");
         var interfaceCollSpec = interfaceColl.getElementType();
 
-        assertEquals(ElementTypeInterface.class, interfaceCollSpec.getCorrespondingClass());
-        assertEquals(BeanSort.ABSTRACT, interfaceCollSpec.getBeanSort());
+        assertEquals(ElementTypeInterface.class, interfaceCollSpec.correspondingClass());
+        assertEquals(BeanSort.ABSTRACT, interfaceCollSpec.beanSort());
         assertHasAction(interfaceCollSpec, "interfaceAction");
         assertHasProperty(interfaceCollSpec, "interfaceProp");
 
         var abstractColl = vmSpec.getCollectionElseFail("abstractColl2");
         var abstractCollSpec = abstractColl.getElementType();
 
-        assertEquals(ElementTypeAbstract.class, abstractCollSpec.getCorrespondingClass());
-        assertEquals(BeanSort.ABSTRACT, abstractCollSpec.getBeanSort());
+        assertEquals(ElementTypeAbstract.class, abstractCollSpec.correspondingClass());
+        assertEquals(BeanSort.ABSTRACT, abstractCollSpec.beanSort());
         assertHasAction(abstractCollSpec, "abstractAction");
         assertHasProperty(abstractCollSpec, "abstractProp");
 
@@ -497,7 +501,7 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
     void domainObjects_ifNatureNotSpecified_shouldConsiderBeanTypeClassifier() {
         var vmSpec = specificationLoader.specForTypeElseFail(ProperViewModelInferredFromNotBeingAnEntity.class);
 
-        assertEquals(BeanSort.VIEW_MODEL, vmSpec.getBeanSort());
+        assertEquals(BeanSort.VIEW_MODEL, vmSpec.beanSort());
         assertNotNull(vmSpec.lookupFacet(ViewModelFacet.class).orElse(null));
     }
 
@@ -506,7 +510,7 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
 
         var i2Spec = specificationLoader.specForTypeElseFail(ProperInterface2.class);
 
-        assertEquals(BeanSort.ABSTRACT, i2Spec.getBeanSort());
+        assertEquals(BeanSort.ABSTRACT, i2Spec.beanSort());
         assertHasProperty(i2Spec, "a");
         assertHasProperty(i2Spec, "b");
         assertHasProperty(i2Spec, "c");
@@ -684,7 +688,7 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         assertEquals(Can.of(
                 "testdomain.v1.ProperServiceWithAlias",
                 "testdomain.v2.ProperServiceWithAlias"),
-                objectSpec.getAliases().map(LogicalType::logicalName));
+                objectSpec.aliases().map(LogicalType::logicalName));
 
         assertEquals(objectSpec,
                 specificationLoader.specForLogicalTypeName("testdomain.v1.ProperServiceWithAlias")
@@ -704,7 +708,7 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         assertEquals(Can.of(
                 "testdomain.v1.ProperObjectWithAlias",
                 "testdomain.v2.ProperObjectWithAlias"),
-                objectSpec.getAliases().map(LogicalType::logicalName));
+                objectSpec.aliases().map(LogicalType::logicalName));
 
         assertEquals(objectSpec,
                 specificationLoader.specForLogicalTypeName("testdomain.v1.ProperObjectWithAlias")
@@ -724,7 +728,7 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         var introspectionPolicyFacet = objectSpec.lookupFacet(IntrospectionPolicyFacet.class).orElse(null);
         assertNotNull(introspectionPolicyFacet);
 
-        var introspectionPolicy = introspectionPolicyFacet.getIntrospectionPolicy();
+        var introspectionPolicy = introspectionPolicyFacet.introspectionPolicy();
         assertEquals(
                 EncapsulationPolicy.ENCAPSULATED_MEMBERS_SUPPORTED,
                 introspectionPolicy.getEncapsulationPolicy());
@@ -774,7 +778,7 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         var introspectionPolicyFacet = objectSpec.lookupFacet(IntrospectionPolicyFacet.class).orElse(null);
         assertNotNull(introspectionPolicyFacet);
 
-        var introspectionPolicy = introspectionPolicyFacet.getIntrospectionPolicy();
+        var introspectionPolicy = introspectionPolicyFacet.introspectionPolicy();
         assertEquals(
                 EncapsulationPolicy.ONLY_PUBLIC_MEMBERS_SUPPORTED,
                 introspectionPolicy.getEncapsulationPolicy());
@@ -926,7 +930,7 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
                             pendingArgsThen.getObservableParamValidation(1).getValue());
                     assertEquals(
                             "my validation",
-                            pendingArgsThen.validateParameterSetForAction().getReasonAsString().orElse(null));
+                            pendingArgsThen.validateParameterSetForAction().reasonAsString().orElse(null));
                 });
 
         // namedEmail(): String = "my email"
@@ -1006,6 +1010,31 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         assertMissesProperty(vmSpec, actionName); // verify don't contributes as property
     }
 
+    // -- JAVA RECORD AS MIXIN
+
+    @ParameterizedTest
+    @ValueSource(classes = {
+            ProperMixinContribution_actionRecord1.class,
+            ProperMixinContribution_actionRecord2.class,
+    })
+    void record_as_mixin(final Class<?> mixinClass) {
+
+        final String actionName = _Strings.splitThenStream(mixinClass.getSimpleName(), "_")
+                .reduce((a, b)->b)
+                .orElseThrow();
+
+        var mixinSpec = specificationLoader.specForTypeElseFail(mixinClass);
+        assertTrue(mixinSpec.isMixin());
+
+        var vmSpec = specificationLoader.specForTypeElseFail(ProperMixinContribution.class);
+        assertHasAction(vmSpec, actionName); // contributed action
+        assertMissesProperty(vmSpec, actionName); // verify don't contributes as property
+
+        // verify we can instantiate the mixin
+        var mixinInstance = factoryService.mixin(mixinClass, new ProperMixinContribution());
+        assertNotNull(mixinInstance);
+    }
+
     // -- JAVA RECORD AS VIEWMODEL
 
     @RequiredArgsConstructor
@@ -1035,7 +1064,7 @@ class DomainModelTest_usingGoodDomain extends CausewayIntegrationTestAbstract {
         var elementType = viewModel.objSpec();
         var viewmodelFacet = elementType.lookupFacet(ViewModelFacet.class).orElse(null);
 
-        assertEquals(BeanSort.VIEW_MODEL, elementType.getBeanSort());
+        assertEquals(BeanSort.VIEW_MODEL, elementType.beanSort());
         assertEquals(classUnderTest.getName(), elementType.getFeatureIdentifier().logicalTypeName());
         assertTrue(ViewModelFacetForJavaRecord.class.isInstance(viewmodelFacet),
                 ()->"Record is expected to have a ViewModelFacetForJavaRecord, got %s"

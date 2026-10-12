@@ -45,6 +45,7 @@ import org.apache.causeway.applib.annotation.Publishing;
 import org.apache.causeway.applib.annotation.RestrictTo;
 import org.apache.causeway.applib.annotation.SemanticsOf;
 import org.apache.causeway.applib.util.schema.CommandDtoUtils;
+import org.apache.causeway.applib.services.command.CommandRecordingSuppressed;
 import org.apache.causeway.applib.value.Clob;
 import org.apache.causeway.applib.value.NamedWithMimeType.CommonMimeType;
 import org.apache.causeway.extensions.commandlog.applib.CausewayModuleExtCommandLogApplib;
@@ -61,7 +62,7 @@ public record CommandExportManager(
         @Property
         @PropertyLayout(describedAs = "Only commands after this timestamp are available for export")
         java.sql.Timestamp baseline,
-        ReplayContext replayContext) implements ViewModel {
+        ReplayContext replayContext) implements ViewModel, CommandRecordingSuppressed {
 
 	public static final String LOGICAL_TYPE_NAME = CausewayModuleExtCommandLogApplib.NAMESPACE + ".CommandExportManager";
 
@@ -141,6 +142,8 @@ public record CommandExportManager(
             describedAs = "Commands that can be exported")
     public List<ReplayableCommand> getNotYetExported() {
         return commandLogEntryRepository().findForegroundSinceTimestampAndCanBeExported(baseline).stream()
+            .filter(entry -> ReplayableCommandEligibility.isEligible(
+                    entry, replayContext.applicationFeatureRepository()))
             .map(entry->new ReplayableCommand(
                     entry.getInteractionId(),
                     replayContext))
@@ -232,10 +235,26 @@ public record CommandExportManager(
     @CollectionLayout(describedAs = "Commands that have been exported")
     public List<ReplayableCommand> getExported() {
         return commandLogEntryRepository().findForegroundSinceTimestampAndHasBeenExported(baseline).stream()
+            .filter(entry -> ReplayableCommandEligibility.isEligible(
+                    entry, replayContext.applicationFeatureRepository()))
             .map(entry->new ReplayableCommand(
                     entry.getInteractionId(),
                     replayContext))
             .collect(Collectors.toList());
+    }
+
+    @Action(
+            semantics = SemanticsOf.SAFE,
+            commandPublishing = Publishing.DISABLED,
+            domainEvent = openCommandManager.DomainEvent.class,
+            executionPublishing = Publishing.DISABLED)
+    @ActionLayout(sequence = "3", named = "Open Command Manager")
+    public class openCommandManager {
+        public class DomainEvent extends ActionDomainEvent<openCommandManager> { }
+
+        @MemberSupport public CommandManager act() {
+            return new CommandManager(baseline, CommandManager.DEFAULT_LIMIT, replayContext);
+        }
     }
 
     @Action(

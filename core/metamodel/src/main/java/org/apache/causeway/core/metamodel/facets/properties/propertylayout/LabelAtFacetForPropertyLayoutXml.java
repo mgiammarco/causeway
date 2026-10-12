@@ -20,17 +20,13 @@ package org.apache.causeway.core.metamodel.facets.properties.propertylayout;
 
 import java.util.Optional;
 
-import org.jspecify.annotations.Nullable;
-
 import org.apache.causeway.applib.annotation.LabelPosition;
 import org.apache.causeway.applib.layout.component.PropertyLayoutData;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
 import org.apache.causeway.core.metamodel.facetapi.QualifiedFacet;
 import org.apache.causeway.core.metamodel.facets.objectvalue.labelat.LabelAtFacet;
 import org.apache.causeway.core.metamodel.facets.objectvalue.labelat.LabelAtFacetAbstract;
-
-import lombok.Getter;
-import lombok.experimental.Accessors;
+import org.jspecify.annotations.Nullable;
 
 public class LabelAtFacetForPropertyLayoutXml
 extends LabelAtFacetAbstract
@@ -45,20 +41,17 @@ implements QualifiedFacet {
             return Optional.empty();
         final LabelPosition labelPosition = propertyLayout.getLabelPosition();
         return labelPosition != null
-            ? Optional.of(new LabelAtFacetForPropertyLayoutXml(labelPosition, holder, precedence, qualifier))
+            ? Optional.of(new LabelAtFacetForPropertyLayoutXml(labelPosition, holder) {
+            	@Override final public Precedence precedence() { return precedence; }
+            	@Override final public @Nullable String qualifier() { return qualifier; }
+            })
             : Optional.empty();
     }
 
-    @Getter(onMethod_ = @Override) @Accessors(fluent = true, makeFinal = true)
-    private final @Nullable String qualifier;
-
     private LabelAtFacetForPropertyLayoutXml(
             final LabelPosition value,
-            final FacetHolder holder,
-            final Precedence precedence,
-            final @Nullable String qualifier) {
-        super(value, holder, precedence);
-        this.qualifier = qualifier;
+            final FacetHolder holder) {
+        super(value, holder);
     }
 
     @Override

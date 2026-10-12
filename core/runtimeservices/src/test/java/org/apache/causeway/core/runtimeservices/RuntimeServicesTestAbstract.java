@@ -20,13 +20,7 @@ package org.apache.causeway.core.runtimeservices;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.mockito.Mockito;
-
-import org.springframework.boot.test.util.TestPropertyValues;
-import org.springframework.core.io.AbstractResource;
-
+import org.apache.causeway.applib.layout.menubars.bootstrap.BSMenuBars;
 import org.apache.causeway.applib.services.jaxb.JaxbService;
 import org.apache.causeway.applib.services.menu.MenuBarsLoaderService;
 import org.apache.causeway.applib.services.menu.MenuBarsMarshallerService;
@@ -42,6 +36,11 @@ import org.apache.causeway.core.mmtestsupport.MetaModelContext_forTesting.MetaMo
 import org.apache.causeway.core.runtimeservices.menubars.MenuBarsLoaderServiceDefault;
 import org.apache.causeway.core.runtimeservices.menubars.bootstrap.MenuBarsMarshallerServiceBootstrap;
 import org.apache.causeway.core.runtimeservices.menubars.bootstrap.MenuBarsServiceBootstrap;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.mockito.Mockito;
+import org.springframework.boot.test.util.TestPropertyValues;
+import org.springframework.core.io.AbstractResource;
 
 import lombok.Getter;
 
@@ -82,11 +81,9 @@ implements HasMetaModelContext {
 
         mmcBuilder.singletonProvider(
                 SingletonBeanProvider
-                .forTestingLazy(MenuBarsLoaderService.class, ()->{
-                    return new MenuBarsLoaderServiceDefault(
-                            menubarsLayoutXmlResourceRef,
-                            CommonMimeType.XML); // format under test
-                }));
+                .forTestingLazy(MenuBarsLoaderService.class, () -> new MenuBarsLoaderServiceDefault(
+				        menubarsLayoutXmlResourceRef,
+				        CommonMimeType.XML)));
 
         mmcBuilder.singletonProvider(
                 SingletonBeanProvider
@@ -94,7 +91,8 @@ implements HasMetaModelContext {
 
                     var messageService = getServiceRegistry().lookupServiceElseFail(MessageService.class);
                     var jaxbService = getServiceRegistry().lookupServiceElseFail(JaxbService.class);
-                    var menuBarsMenuBarsMarshaller = getServiceRegistry().lookupServiceElseFail(MenuBarsMarshallerService.class);
+                    @SuppressWarnings("unchecked")
+                    MenuBarsMarshallerService<BSMenuBars> menuBarsMenuBarsMarshaller = getServiceRegistry().lookupServiceElseFail(MenuBarsMarshallerService.class);
                     var menuBarsLoaderService = getServiceRegistry().lookupServiceElseFail(MenuBarsLoaderService.class);
                     return new MenuBarsServiceBootstrap(
                             menuBarsLoaderService,
@@ -112,7 +110,6 @@ implements HasMetaModelContext {
     @AfterEach
     final void tearDown() throws Exception {
         onTearDown();
-        metaModelContext.getSpecificationLoader().disposeMetaModel();
         metaModelContext = null;
     }
 

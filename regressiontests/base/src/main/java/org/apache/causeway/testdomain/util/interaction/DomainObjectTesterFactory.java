@@ -114,7 +114,7 @@ public class DomainObjectTesterFactory implements HasMetaModelContext {
             final @NonNull ActionInteraction actionInteraction) {
         var managedAction = actionInteraction.getManagedActionElseFail();
         assertEquals(domainObject.getClass(),
-                managedAction.getOwner().objSpec().getCorrespondingClass());
+                managedAction.getOwner().objSpec().correspondingClass());
         var actionTester = getServiceInjector().injectServicesInto(
                 new ActionTester<>(domainObject, actionInteraction, managedAction));
         actionTester.init();
@@ -282,7 +282,7 @@ public class DomainObjectTesterFactory implements HasMetaModelContext {
         }
 
         private final @NonNull ThrowingSupplier<ParameterNegotiationModel> parameterNegotiationStarter;
-        private List<Command> capturedCommands = new ArrayList<>();
+        private final List<Command> capturedCommands = new ArrayList<>();
 
         private ActionTester(
                 final @NonNull T domainObject,
@@ -565,7 +565,7 @@ public class DomainObjectTesterFactory implements HasMetaModelContext {
                         usabilityTests
                             .get(param.paramIndex())
                             .ifPresent(usabilityTest->
-                                usabilityTest.accept(consent.getReasonAsString().orElse(null)));
+                                usabilityTest.accept(consent.reasonAsString().orElse(null)));
                     });
 
                 });
@@ -1047,7 +1047,7 @@ public class DomainObjectTesterFactory implements HasMetaModelContext {
                 .orElseThrow(()->_Exceptions.noSuchElement(
                     String.format("'%s: %s' has no %s on its element type",
                             memberName,
-                            getObjectSpecification().getCorrespondingClass().getSimpleName(),
+                            getObjectSpecification().correspondingClass().getSimpleName(),
                             facetType.getSimpleName())
                     ));
         }

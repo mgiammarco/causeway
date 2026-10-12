@@ -28,11 +28,11 @@ import org.apache.causeway.core.metamodel.facetapi.Facet;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
 import org.apache.causeway.core.metamodel.facets.DomainEventFacetAbstract;
 import org.apache.causeway.core.metamodel.facets.DomainEventHelper;
+import org.apache.causeway.core.metamodel.facets.FacetFactory.ProcessMethodContext;
 import org.apache.causeway.core.metamodel.facets.object.domainobject.domainevents.CollectionDomainEventDefaultFacetForDomainObjectAnnotation;
 import org.apache.causeway.core.metamodel.interactions.HidingInteractionAdvisor;
 import org.apache.causeway.core.metamodel.interactions.vis.VisibilityContext;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
-
 import org.jspecify.annotations.NonNull;
 
 public class CollectionDomainEventFacet
@@ -52,9 +52,9 @@ implements HidingInteractionAdvisor {
      */
     public static CollectionDomainEventFacet create(
             final @NonNull Optional<Collection> collectionIfAny,
-            final @NonNull Class<?> classBeingIntrospected,
-            final @NonNull FacetHolder facetHolder) {
+            final @NonNull ProcessMethodContext processMethodContext) {
 
+    	final FacetHolder facetHolder = processMethodContext.facetHolder();
         var collectionDomainEventFacet = collectionIfAny
                 .map(Collection::domainEvent)
                 .filter(domainEvent -> domainEvent != CollectionDomainEvent.Default.class)
@@ -64,8 +64,9 @@ implements HidingInteractionAdvisor {
                 .orElseGet(()->{
 
                     /* only used to lookup {@link CollectionDomainEventDefaultFacetForDomainObjectAnnotation} */
-                    var typeSpec = facetHolder.getSpecificationLoader().loadSpecification(classBeingIntrospected);
-                    var typeFromDomainObject = typeSpec.getFacet(CollectionDomainEventDefaultFacetForDomainObjectAnnotation.class);
+                    var typeSpec = processMethodContext.loadSpecificationTypeOnly(processMethodContext.cls());
+                    var typeFromDomainObject = typeSpec.lookupFacet(CollectionDomainEventDefaultFacetForDomainObjectAnnotation.class)
+                    		.orElse(null);
 
                     return typeFromDomainObject != null
                             ? new CollectionDomainEventFacet(
@@ -77,6 +78,36 @@ implements HidingInteractionAdvisor {
                 });
 
         return collectionDomainEventFacet;
+    }
+
+    /**
+     * Creates a mixee-specific (object-type-specific) overlay facet for a mixed-in collection, honoring the
+     * mixee's {@code @DomainObject} collection domain-event default. Returns empty when the mixee declares no
+     * such default. The overlay is {@link Facet#isObjectTypeSpecific() object-type-specific} so it is
+     * installed on the mixed-in member's local facet holder rather than the shared mixin facet holder.
+     */
+    public static Optional<CollectionDomainEventFacet> createObjectTypeSpecificForMixin(
+            final @NonNull ObjectSpecification mixeeSpec,
+            final @NonNull FacetHolder facetHolder) {
+        return mixeeSpec
+                .lookupFacet(CollectionDomainEventDefaultFacetForDomainObjectAnnotation.class)
+                .map(facetOnMixee -> new ObjectTypeSpecific(
+                        facetOnMixee.getEventType(),
+                        EventTypeOrigin.ANNOTATED_OBJECT,
+                        facetHolder));
+    }
+
+    private static class ObjectTypeSpecific extends CollectionDomainEventFacet {
+        protected ObjectTypeSpecific(
+                final Class<? extends CollectionDomainEvent<?, ?>> eventType,
+                final EventTypeOrigin eventTypeOrigin,
+                final FacetHolder holder) {
+            super(eventType, eventTypeOrigin, holder);
+        }
+        @Override
+        public boolean isObjectTypeSpecific() {
+            return true;
+        }
     }
 
     // -- CONSTRUCTION
@@ -110,9 +141,8 @@ implements HidingInteractionAdvisor {
                         _Casts.uncheckedCast(getEventType()),
                         facetHolder(), ic.head()
                 );
-        if (event != null && event.isHidden()) {
-            return "Hidden by subscriber";
-        }
+        if (event != null && event.isHidden())
+			return "Hidden by subscriber";
         return null;
     }
 

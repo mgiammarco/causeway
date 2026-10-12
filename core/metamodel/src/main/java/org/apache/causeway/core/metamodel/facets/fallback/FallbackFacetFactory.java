@@ -21,14 +21,14 @@ package org.apache.causeway.core.metamodel.facets.fallback;
 import java.util.HashMap;
 import java.util.Map;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.facetapi.Facet;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
+import org.apache.causeway.core.metamodel.facetapi.TypedFacetHolder;
 import org.apache.causeway.core.metamodel.facets.FacetFactoryAbstract;
-import org.apache.causeway.core.metamodel.facets.FacetedMethod;
-import org.apache.causeway.core.metamodel.facets.TypedFacetHolder;
+
+import jakarta.inject.Inject;
 
 /**
  * Central point for providing some kind of default for any {@link Facet}s
@@ -64,51 +64,47 @@ public class FallbackFacetFactory extends FacetFactoryAbstract {
 
     @Override
     public void process(final ProcessClassContext processClassContext) {
+        var facetHolder = processClassContext.facetHolder();
 
-        var facetHolder = processClassContext.getFacetHolder();
-
-        addFacet(new TitleFacetNone(facetHolder));
-        addFacet(new PagedFacetFromConfiguration(
-                        getConfiguration().applib().annotation().domainObjectLayout().paged(),
-                        facetHolder));
+        new TitleFacetNone(facetHolder);
+        new PagedFacetFromConfiguration(
+                getConfiguration().applib().annotation().domainObjectLayout().paged(),
+                facetHolder);
     }
 
     @Override
     public void process(final ProcessMethodContext processMethodContext) {
+        final FacetedMethod facetedMethod = processMethodContext.facetHolder();
 
-        final FacetedMethod facetedMethod = processMethodContext.getFacetHolder();
-
-        addFacet(new NamedFacetFallbackFromMemberName(facetedMethod));
+        new NamedFacetFallbackFromMemberName(facetedMethod);
 
         final FeatureType featureType = facetedMethod.featureType();
         if (featureType.isProperty()) {
-            addFacet(new MaxLengthFacetUnlimited(facetedMethod));
-            addFacet(new MultiLineFacetNone(facetedMethod));
-            addFacet(new LabelAtFacetFromLayoutConfiguration(
+            new MaxLengthFacetUnlimited(facetedMethod);
+            new MultiLineFacetNone(facetedMethod);
+            new LabelAtFacetFromLayoutConfiguration(
                     getConfiguration().applib().annotation().propertyLayout().labelPosition(),
-                    facetedMethod));
+                    facetedMethod);
         }
         if (featureType.isAction()) {
             // none
         }
         if (featureType.isCollection()) {
-            addFacet(
-                    new PagedFacetFromConfiguration(
-                            getConfiguration().applib().annotation().collectionLayout().paged(),
-                            facetedMethod));
+            new PagedFacetFromConfiguration(
+                    getConfiguration().applib().annotation().collectionLayout().paged(),
+                    facetedMethod);
         }
-
     }
 
     @Override
     public void processParams(final ProcessParameterContext processParameterContext) {
-        final TypedFacetHolder typedHolder = processParameterContext.getFacetHolder();
+        final TypedFacetHolder typedHolder = processParameterContext.facetHolder();
         if (typedHolder.featureType().isActionParameter()) {
-            addFacet(new MultiLineFacetNone(typedHolder));
-            addFacet(new MaxLengthFacetUnlimited(typedHolder));
-            addFacet(new LabelAtFacetFromLayoutConfiguration(
+            new MultiLineFacetNone(typedHolder);
+            new MaxLengthFacetUnlimited(typedHolder);
+            new LabelAtFacetFromLayoutConfiguration(
                     getConfiguration().applib().annotation().parameterLayout().labelPosition(),
-                    typedHolder));
+                    typedHolder);
         }
     }
 

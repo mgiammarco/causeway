@@ -60,11 +60,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SimpleMutationForAction extends Element {
 
-    private static final SchemaType SCHEMA_TYPE = SchemaType.SIMPLE;
-
     private final ObjectSpecification objectSpec;
     private final ObjectAction objectAction;
-    private String argumentName;
+    private final String argumentName;
 
     public SimpleMutationForAction(
             final ObjectSpecification objectSpec,
@@ -97,11 +95,11 @@ public class SimpleMutationForAction extends Element {
     @Nullable
     private GraphQLOutputType typeFor(final ObjectAction objectAction){
         ObjectSpecification objectSpecification = objectAction.getReturnType();
-        switch (objectSpecification.getBeanSort()){
+        switch (objectSpecification.beanSort()){
 
             case COLLECTION:
 
-                TypeOfFacet facet = objectAction.getFacet(TypeOfFacet.class);
+                TypeOfFacet facet = objectAction.lookupFacet(TypeOfFacet.class).orElse(null);
                 if (facet == null) {
                     log.warn("Unable to locate TypeOfFacet for {}", objectAction.getFeatureIdentifier().getFullIdentityString());
                     return null;
@@ -110,7 +108,7 @@ public class SimpleMutationForAction extends Element {
                 GraphQLType wrappedType = context.typeMapper.outputTypeFor(objectSpecificationOfCollectionElement, SchemaType.RICH);
                 if (wrappedType == null) {
                     log.warn("Unable to create wrapped type of for {} for action {}",
-                            objectSpecificationOfCollectionElement.getFullIdentifier(),
+                            objectSpecificationOfCollectionElement.fullIdentifier(),
                             objectAction.getFeatureIdentifier().getFullIdentityString());
                     return null;
                 }
@@ -128,16 +126,17 @@ public class SimpleMutationForAction extends Element {
     @Override
     protected Object fetchData(final DataFetchingEnvironment dataFetchingEnvironment) {
 
-        var isService = objectSpec.getBeanSort().isManagedBeanContributing();
+        var isService = objectSpec.beanSort().isManagedBeanContributing();
 
         var environment = new Environment.For(dataFetchingEnvironment);
         Object sourcePojo;
         if (isService) {
-            sourcePojo = context.serviceRegistry.lookupServiceElseFail(objectSpec.getCorrespondingClass());
+            sourcePojo = context.serviceRegistry.lookupServiceElseFail(objectSpec.correspondingClass());
         } else {
             Object target = dataFetchingEnvironment.getArgument(argumentName);
             Optional<Object> result;
-            var argumentValue = (Map<String, ?>) target;
+            @SuppressWarnings("unchecked")
+			var argumentValue = (Map<String, ?>) target;
             var idValue = (String)argumentValue.get("id");
             if (idValue != null) {
                 var objectSpecArg = (ObjectSpecification) argumentValue.get("logicalTypeName");
@@ -145,7 +144,7 @@ public class SimpleMutationForAction extends Element {
                 if (objectSpecArg != null) {
                     bookmarkIfAny = Optional.of(Bookmark.forLogicalTypeNameAndIdentifier(objectSpecArg.logicalTypeName(), idValue));
                 } else {
-                    Class<?> paramClass = objectSpec.getCorrespondingClass();
+                    Class<?> paramClass = objectSpec.correspondingClass();
                     bookmarkIfAny = context.bookmarkService.bookmarkFor(paramClass, idValue);
                 }
                 result = bookmarkIfAny
@@ -158,9 +157,8 @@ public class SimpleMutationForAction extends Element {
                     var key = ObjectFeatureUtils.keyFor(refValue);
                     BookmarkedPojo value = environment.getGraphQlContext().get(key);
                     result = Optional.of(value).map(BookmarkedPojo::getTargetPojo);
-                } else {
-                    throw new IllegalArgumentException("Either 'id' or 'ref' must be specified for a DomainObject input type");
-                }
+                } else
+					throw new IllegalArgumentException("Either 'id' or 'ref' must be specified for a DomainObject input type");
             }
             sourcePojo = result
                     .orElseThrow(); // TODO: better error handling if no such object found.
@@ -169,22 +167,19 @@ public class SimpleMutationForAction extends Element {
         ManagedObject managedObject = ManagedObject.adaptSingular(objectSpec, sourcePojo);
 
         var visibleConsent = objectAction.isVisible(managedObject, InteractionInitiatedBy.USER, Where.ANYWHERE);
-        if (visibleConsent.isVetoed()) {
-            throw new HiddenException(objectAction.getFeatureIdentifier());
-        }
+        if (visibleConsent.isVetoed())
+			throw new HiddenException(objectAction.getFeatureIdentifier());
 
         var usableConsent = objectAction.isUsable(managedObject, InteractionInitiatedBy.USER, Where.ANYWHERE);
-        if (usableConsent.isVetoed()) {
-            throw new DisabledException(objectAction.getFeatureIdentifier());
-        }
+        if (usableConsent.isVetoed())
+			throw new DisabledException(objectAction.getFeatureIdentifier());
 
         var head = objectAction.interactionHead(managedObject);
         var argumentManagedObjects = argumentManagedObjectsFor(environment, objectAction);
 
         var validityConsent = objectAction.isArgumentSetValid(head, argumentManagedObjects, InteractionInitiatedBy.USER);
-        if (validityConsent.isVetoed()) {
-            throw new IllegalArgumentException(validityConsent.getReasonAsString().orElse("Invalid"));
-        }
+        if (validityConsent.isVetoed())
+			throw new IllegalArgumentException(validityConsent.reasonAsString().orElse("Invalid"));
 
         var resultManagedObject = objectAction.execute(head, argumentManagedObjects, InteractionInitiatedBy.USER);
         return resultManagedObject.getPojo();
@@ -197,7 +192,7 @@ public class SimpleMutationForAction extends Element {
         var argName = context.causewayConfiguration.viewer().graphql().mutation().targetArgName();
 
         // add target (if not a service)
-        if (! objectSpec.getBeanSort().isManagedBeanContributing()) {
+        if (! objectSpec.beanSort().isManagedBeanContributing()) {
             arguments.add(
                     GraphQLArgument.newArgument()
                             .name(argName)

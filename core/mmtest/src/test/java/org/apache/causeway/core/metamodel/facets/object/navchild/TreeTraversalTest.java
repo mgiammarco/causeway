@@ -18,15 +18,12 @@
  */
 package org.apache.causeway.core.metamodel.facets.object.navchild;
 
-import java.util.stream.Collectors;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.stream.Collectors;
 
 import org.apache.causeway.applib.graph.tree.TreeNode;
 import org.apache.causeway.commons.collections.Can;
@@ -35,6 +32,8 @@ import org.apache.causeway.core.metamodel.facets.FacetFactoryTestAbstract;
 import org.apache.causeway.core.metamodel.facets.object.navchild._TreeSample.A;
 import org.apache.causeway.core.metamodel.spec.feature.MixedIn;
 import org.apache.causeway.core.mmtestsupport.MetaModelContext_forTesting;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class TreeTraversalTest
 extends FacetFactoryTestAbstract {
@@ -79,7 +78,7 @@ extends FacetFactoryTestAbstract {
         var assocAC = specA.getAssociationElseFail("childrenC");
         assertTrue(assocAC.isCollection());
         assertTrue(assocAC.containsFacet(NavigableSubtreeSequenceFacet.class));
-        assertEquals(_TreeSample.C.class, assocAC.getElementType().getCorrespondingClass());
+        assertEquals(_TreeSample.C.class, assocAC.getElementType().correspondingClass());
 
         // second: post-processor should generate NavigableSubtreeFacet
         assertTrue(specA.containsFacet(NavigableSubtreeFacet.class));
@@ -93,7 +92,7 @@ extends FacetFactoryTestAbstract {
         assertFalse(tree.isLeaf());
 
         // node a is expected to have 4 children
-        var navigableSubtreeFacet = specA.getFacet(NavigableSubtreeFacet.class);
+        var navigableSubtreeFacet = specA.lookupFacet(NavigableSubtreeFacet.class).orElse(null);
         assertEquals(4, navigableSubtreeFacet.childCountOf(a));
         assertEquals(4, navigableSubtreeFacet.childrenOf(a).toList().size());
         assertEquals(4, treeAdapter.childCountOf(a));

@@ -18,6 +18,7 @@
  */
 package org.apache.causeway.core.config.beans;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -30,8 +31,9 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.stereotype.Component;
 
 import org.apache.causeway.applib.id.LogicalType;
+import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.functional.Try;
-import org.apache.causeway.commons.internal.collections._Maps;
+import org.apache.causeway.commons.internal.base._NullSafe;
 import org.apache.causeway.commons.internal.context._Context;
 import org.apache.causeway.commons.internal.reflection._ClassCache;
 import org.apache.causeway.core.config.beans.CausewayBeanMetaData.DiscoveredBy;
@@ -51,10 +53,22 @@ record CausewayComponentCollector(
     CausewayComponentCollector(
             final @NonNull BeanDefinitionRegistry registry,
             final @NonNull CausewayBeanTypeClassifier causewayBeanTypeClassifier) {
-        this(registry, causewayBeanTypeClassifier, _Maps.newConcurrentHashMap());
+
+        //TODO with newer java we can create the Can up front and remove snaphotIntrospectableTypes
+        this(registry, causewayBeanTypeClassifier, new HashMap<>());
+
+        var beanDefNames = registry.getBeanDefinitionNames();
+        _NullSafe.stream(beanDefNames)
+            .forEach(this::collect);
     }
 
-    void collect(final String beanDefinitionName) {
+    Can<CausewayBeanMetaData> snaphotIntrospectableTypes() {
+        return Can.ofCollection(introspectableTypes().values());
+    }
+
+    // -- HELPER
+
+    private void collect(final String beanDefinitionName) {
         var beanDefinition = lookupBeanDefinition(beanDefinitionName).orElse(null);
         if(beanDefinition == null) return;
 
@@ -78,8 +92,6 @@ record CausewayComponentCollector(
             }
         }
     }
-
-    // -- HELPER
 
     /**
      * Allows for the given type-meta to be modified before bean-definition registration

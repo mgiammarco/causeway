@@ -19,7 +19,9 @@
 package org.apache.causeway.core.metamodel.services.metamodel;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,7 +30,6 @@ import org.apache.causeway.applib.services.metamodel.Config;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.internal.base._NullSafe;
 import org.apache.causeway.commons.internal.collections._Lists;
-import org.apache.causeway.commons.internal.collections._Maps;
 import org.apache.causeway.core.metamodel.facetapi.Facet;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
@@ -74,21 +75,21 @@ class MetaModelExporter {
     MetamodelDto exportMetaModel(final Config config) {
 
         // single type(s) MM export support
-        var tinyDomain = _Lists.<ObjectSpecification>newArrayList();
+        var tinyDomain = new ArrayList<ObjectSpecification>();
         var useTinyDomain = _NullSafe.stream(config.getNamespacePrefixes())
-        .map(namespace->specificationLookup.specForLogicalTypeName(namespace))
-        .peek(specIfAny->specIfAny.ifPresent(tinyDomain::add))
-        .allMatch(Optional::isPresent);
+	        .map(namespace->specificationLookup.specForLogicalTypeName(namespace))
+	        .peek(specIfAny->specIfAny.ifPresent(tinyDomain::add))
+	        .allMatch(Optional::isPresent);
 
-        if(useTinyDomain) {
-            return exportTinyDomain(tinyDomain, config);
-        }
+        if(useTinyDomain
+        		&& !tinyDomain.isEmpty())
+			return exportTinyDomain(tinyDomain, config);
 
         MetamodelDto metamodelDto = new MetamodelDto();
 
         // phase 1: create a domainClassType for each ObjectSpecification
         // these are added into a map for lookups in phase 2
-        final Map<ObjectSpecification, DomainClassDto> domainClassByObjectSpec = _Maps.newHashMap();
+        final Map<ObjectSpecification, DomainClassDto> domainClassByObjectSpec = new HashMap<>();
         for (final ObjectSpecification specification : specificationLookup.snapshotSpecifications()) {
             DomainClassDto domainClassType = asXsdType(specification, config);
             domainClassByObjectSpec.put(specification, domainClassType);
@@ -103,7 +104,7 @@ class MetaModelExporter {
         // correspond to each object members types.
         //
         // we do this in phases, just in case we discover new types along the way as we introspect the members.
-        final List<ObjectSpecification> processed = _Lists.newArrayList();
+        final List<ObjectSpecification> processed = new ArrayList<>();
         List<ObjectSpecification> toProcess =
                 remaining(domainClassByObjectSpec.keySet(), processed);
         while(!toProcess.isEmpty()) {
@@ -115,24 +116,23 @@ class MetaModelExporter {
         }
 
         // phase 2.5: check no duplicates
-        final Map<String, ObjectSpecification> objectSpecificationByDomainClassId = _Maps.newHashMap();
-        final List<String> buf = _Lists.newArrayList();
+        final Map<String, ObjectSpecification> objectSpecificationByDomainClassId = new HashMap<>();
+        final List<String> buf = new ArrayList<>();
         for (final Map.Entry<ObjectSpecification, DomainClassDto> entry : domainClassByObjectSpec.entrySet()) {
             final ObjectSpecification objectSpecification = entry.getKey();
             final DomainClassDto domainClassDto = entry.getValue();
             final String id = domainClassDto.getId();
             final ObjectSpecification existing = objectSpecificationByDomainClassId.get(id);
             if(existing != null) {
-                if(!existing.getCorrespondingClass().isEnum()) {
+                if(!existing.correspondingClass().isEnum()) {
                     buf.add(String.format("%s mapped to %s and %s", id, existing, objectSpecification));
                 }
             } else {
                 objectSpecificationByDomainClassId.put(id, objectSpecification);
             }
         }
-        if(buf.size() > 0) {
-            throw new IllegalStateException(String.join("\n", buf));
-        }
+        if(buf.size() > 0)
+			throw new IllegalStateException(String.join("\n", buf));
 
         // phase 3: now copy all domain classes into the metamodel
         for (final ObjectSpecification objectSpecification : _Lists.newArrayList(domainClassByObjectSpec.keySet())) {
@@ -150,7 +150,7 @@ class MetaModelExporter {
     private MetamodelDto exportTinyDomain(final List<ObjectSpecification> tinyDomain, final Config config) {
         MetamodelDto metamodelDto = new MetamodelDto();
 
-        final Map<ObjectSpecification, DomainClassDto> domainClassByObjectSpec = _Maps.newHashMap();
+        final Map<ObjectSpecification, DomainClassDto> domainClassByObjectSpec = new HashMap<>();
         for (final ObjectSpecification specification : tinyDomain) {
             DomainClassDto domainClassType = asXsdType(specification, config);
             domainClassByObjectSpec.put(specification, domainClassType);
@@ -171,9 +171,9 @@ class MetaModelExporter {
     private boolean shouldIgnore(final Config config, final ObjectSpecification specification) {
         return notInNamespacePrefixes(specification, config)
                 || config.isIgnoreMixins() && specification.isMixin()
-                || config.isIgnoreInterfaces() && specification.getCorrespondingClass().isInterface()
+                || config.isIgnoreInterfaces() && specification.correspondingClass().isInterface()
                 || config.isIgnoreAbstractClasses()
-                    && Modifier.isAbstract(specification.getCorrespondingClass().getModifiers())
+                    && Modifier.isAbstract(specification.correspondingClass().getModifiers())
                 || config.isIgnoreBuiltInValueTypes()
                     && isValueType(specification);
     }
@@ -194,15 +194,13 @@ class MetaModelExporter {
             final Config config) {
 
         var namespacePrefixes = config.getNamespacePrefixes();
-        if(config.isNamespacePrefixAny()) {
-            return true; // export all
-        }
+        if(config.isNamespacePrefixAny())
+			return true; // export all
 
         var logicalTypeName = specification.logicalTypeName();
         for (var prefix : namespacePrefixes) {
-            if(logicalTypeName.startsWith(prefix)) {
-                return true;
-            }
+            if(logicalTypeName.startsWith(prefix))
+				return true;
         }
         return false;
     }
@@ -211,7 +209,7 @@ class MetaModelExporter {
             final ObjectSpecification specification, final Config config) {
 
         final DomainClassDto domainClass = new DomainClassDto();
-        domainClass.setId(specification.getFullIdentifier());
+        domainClass.setId(specification.fullIdentifier());
         if(specification.isInjectable()) {
             domainClass.setService(true);
         }
@@ -230,9 +228,8 @@ class MetaModelExporter {
         }
         addFacets(specification, domainClass.getFacets(), config);
 
-        if(specification.isValueOrIsParented() || isEnum(specification)) {
-            return;
-        }
+        if(specification.isValueOrIsParented() || isEnum(specification))
+			return;
 
         if (specification.isInjectable()) {
             if(specification.isDomainService()) {
@@ -246,7 +243,7 @@ class MetaModelExporter {
     }
 
     private boolean isEnum(final ObjectSpecification specification) {
-        return specification.getCorrespondingClass().isEnum();
+        return specification.correspondingClass().isEnum();
     }
 
     private void addProperties(
@@ -434,9 +431,8 @@ class MetaModelExporter {
     private void addAttribute(
             final org.apache.causeway.schema.metamodel.v2.Facet facetType,
             final String key, final String str) {
-        if(str == null) {
-            return;
-        }
+        if(str == null)
+			return;
         FacetAttr attributeDto = new FacetAttr();
         attributeDto.setName(key);
         attributeDto.setValue(str);
@@ -460,7 +456,7 @@ class MetaModelExporter {
     }
 
     private boolean isValueType(final ObjectSpecification specification) {
-        return specification.getBeanSort().isValue();
+        return specification.beanSort().isValue();
     }
 
 }

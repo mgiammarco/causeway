@@ -19,24 +19,25 @@
 package org.apache.causeway.commons.internal.exceptions;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
-
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.internal.base._NullSafe;
 import org.apache.causeway.commons.internal.base._Strings;
 import org.apache.causeway.commons.internal.collections._Lists;
 import org.apache.causeway.commons.io.TextUtils;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import lombok.SneakyThrows;
 
@@ -205,19 +206,17 @@ public final class _Exceptions {
     // -- MESSAGE
 
     public static String getMessage(final Throwable ex) {
-        if(ex==null) {
-            return "no exception present";
-        }
-        if(_Strings.isNotEmpty(ex.getMessage())) {
-            return ex.getMessage();
-        }
+        if(ex==null)
+			return "no exception present";
+        if(_Strings.isNotEmpty(ex.getMessage()))
+			return ex.getMessage();
         var sb = new StringBuilder();
         var nestedMsg = streamCausalChain(ex)
                 .peek(throwable->{
                     sb.append(throwable.getClass().getSimpleName()).append("/");
                 })
                 .map(Throwable::getMessage)
-                .filter(_NullSafe::isPresent)
+                .filter(Objects::nonNull)
                 .findFirst();
 
         if(nestedMsg.isPresent()) {
@@ -258,17 +257,15 @@ public final class _Exceptions {
     // -- SELECTIVE THROW
 
     public static <E extends Exception> void throwWhenTrue(final E cause, final Predicate<E> test) throws E {
-        if(test.test(cause)) {
-            throw cause;
-        }
+        if(test.test(cause))
+			throw cause;
     }
 
     // -- STACKTRACE UTILITITIES
 
     public static final Stream<String> streamStacktraceLines(final @Nullable Throwable ex, final int maxLines) {
-        if(ex==null) {
-            return Stream.empty();
-        }
+        if(ex==null)
+			return Stream.empty();
         return _NullSafe.stream(ex.getStackTrace())
                 .map(StackTraceElement::toString)
                 .limit(maxLines);
@@ -308,10 +305,9 @@ public final class _Exceptions {
     // -- CAUSAL CHAIN
 
     public static List<Throwable> getCausalChain(final @Nullable Throwable ex) {
-        if(ex==null) {
-            return Collections.emptyList();
-        }
-        final List<Throwable> chain = _Lists.newArrayList();
+        if(ex==null)
+			return Collections.emptyList();
+        final List<Throwable> chain = new ArrayList<>();
         Throwable t = ex;
         while(t!=null) {
             chain.add(t);
@@ -325,9 +321,8 @@ public final class _Exceptions {
     }
 
     public static Stream<Throwable> streamCausalChain(final @Nullable Throwable ex) {
-        if(ex==null) {
-            return Stream.empty();
-        }
+        if(ex==null)
+			return Stream.empty();
         var chain = getCausalChain(ex);
         return chain.stream();
     }
@@ -377,18 +372,15 @@ public final class _Exceptions {
             final @Nullable Throwable throwable,
             final @Nullable String ... messages) {
 
-        if(throwable==null) {
-            return false;
-        }
+        if(throwable==null)
+			return false;
         var throwableMessage = throwable.getMessage();
-        if(throwableMessage == null || _NullSafe.isEmpty(messages)) {
-            return false;
-        }
+        if(throwableMessage == null || _NullSafe.isEmpty(messages))
+			return false;
         for (String message : messages) {
             if(_Strings.isNotEmpty(message)
-                    && throwableMessage.contains(message)) {
-                return true;
-            }
+                    && throwableMessage.contains(message))
+				return true;
         }
         return false;
     }
@@ -459,36 +451,32 @@ public final class _Exceptions {
         }
 
         public void rethrowIf(final @NonNull Predicate<E> condition) throws E {
-            if(condition.test(cause)) {
-                throw cause;
-            }
+            if(condition.test(cause))
+				throw cause;
         }
 
         public void suppressIf(final @NonNull Predicate<E> condition) throws E {
-            if(!condition.test(cause)) {
-                throw cause;
-            }
+            if(!condition.test(cause))
+				throw cause;
         }
 
         public void rethrowIfMessageContains(final @NonNull String string) throws E {
             final boolean containsMessage = getMessage().map(msg->msg.contains(string)).orElse(false);
-            if(containsMessage) {
-                throw cause;
-            }
+            if(containsMessage)
+				throw cause;
         }
 
         public void suppressIfMessageContains(final @NonNull String string) throws E {
             final boolean containsMessage = getMessage().map(msg->msg.contains(string)).orElse(false);
-            if(!containsMessage) {
-                throw cause;
-            }
+            if(!containsMessage)
+				throw cause;
         }
 
     }
-    
+
     public static class FirstExceptionCollector {
     	private Exception firstException = null;
-    	public void collect(Exception ex) {
+    	public void collect(final Exception ex) {
     		if(firstException==null) {
 				this.firstException = ex;
 			}

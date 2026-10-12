@@ -139,7 +139,7 @@ implements HasMetaModelContext, Menuable, HasManagedAction {
     public String getReasonDisabledIfAny() {
         // no point evaluating if not visible
         return isVisible()
-                ? getActionModel().getUsabilityConsent(where).getReasonAsString().orElse(null)
+                ? getActionModel().getUsabilityConsent(where).reasonAsString().orElse(null)
                 : null;
     }
 
@@ -223,7 +223,7 @@ implements HasMetaModelContext, Menuable, HasManagedAction {
         var actionOwnerSpec = actionModel.getActionOwner().objSpec();
         var actionPrompt = ActionPromptProvider
                 .getFrom(this.getPage())
-                .getActionPrompt(actionModel.getPromptStyle(), actionOwnerSpec.getBeanSort());
+                .getActionPrompt(actionModel.getPromptStyle(), actionOwnerSpec.beanSort());
 
         var actionParametersPanel = getComponentFactoryRegistry()
                 .createComponent(actionPrompt.getContentId(),

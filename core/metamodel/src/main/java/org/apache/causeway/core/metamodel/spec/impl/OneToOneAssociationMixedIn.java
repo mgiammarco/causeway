@@ -25,7 +25,6 @@ import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.consent.Consent.VetoReason;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
-import org.apache.causeway.core.metamodel.facetapi.FacetUtil;
 import org.apache.causeway.core.metamodel.facets.all.named.MemberNamedFacet;
 import org.apache.causeway.core.metamodel.facets.all.named.MemberNamedFacetForStaticMemberName;
 import org.apache.causeway.core.metamodel.facets.members.disabled.DisabledFacet;
@@ -38,6 +37,7 @@ import org.apache.causeway.core.metamodel.spec.feature.MixedInMember;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
 
 import lombok.Getter;
+import lombok.experimental.Accessors;
 
 class OneToOneAssociationMixedIn
 extends OneToOneAssociationDefault
@@ -64,7 +64,7 @@ implements MixedInMember {
     /**
      * Hold facets rather than delegate to the contributed action.
      */
-    @Getter(onMethod = @__(@Override))
+    @Getter(onMethod_ = {@Override}) @Accessors(fluent = true)
     private final FacetHolder facetHolder;
 
     public OneToOneAssociationMixedIn(
@@ -88,7 +88,7 @@ implements MixedInMember {
         //
         // ensure the contributed property cannot be modified
         //
-        FacetUtil.addFacet(disabledFacet());
+        disabledFacet();
 
         // adjust name if necessary
         var isExplicitlyNamed = lookupNonFallbackFacet(MemberNamedFacet.class)
@@ -96,8 +96,7 @@ implements MixedInMember {
 
         if(!isExplicitlyNamed) {
             String memberName = _MixedInMemberNamingStrategy.mixinFriendlyName(mixinAction);
-            FacetUtil.addFacet(
-                    new MemberNamedFacetForStaticMemberName(memberName, facetHolder));
+            new MemberNamedFacetForStaticMemberName(memberName, facetHolder);
         }
 
     }
@@ -110,11 +109,10 @@ implements MixedInMember {
     }
 
     private DisabledFacet disabledFacet() {
-        final DisabledFacet originalFacet = facetHolder.getFacet(DisabledFacet.class);
+        final DisabledFacet originalFacet = facetHolder.lookupFacet(DisabledFacet.class).orElse(null);
         if( originalFacet != null &&
-                originalFacet.where().isAlways()) {
-            return originalFacet;
-        }
+                originalFacet.where().isAlways())
+			return originalFacet;
         // ensure that the contributed association is always disabled
         return new DisabledFacetForContributee(VetoReason.mixedinProperty(), this);
     }
@@ -166,7 +164,7 @@ implements MixedInMember {
             final ObjectActionDefault mixinAction) {
         return Identifier.propertyIdentifier(
                     LogicalType.eager(
-                            mixeeSpec.getCorrespondingClass(),
+                            mixeeSpec.correspondingClass(),
                             mixeeSpec.logicalTypeName()),
                     _MixedInMemberNamingStrategy.mixinMemberId(mixinAction));
     }

@@ -335,6 +335,15 @@ public abstract class CommandLogEntryRepositoryAbstract<C extends CommandLogEntr
 
     @Override
     public C saveForReplay(final CommandDto commandToReplay) {
+        // idempotent per interaction id: re-importing/re-saving a command that already exists returns the
+        // existing entry rather than creating a duplicate (the command-log primary key is the interaction id).
+        final C existing = interactionIdOf(commandToReplay)
+                .map(this::findByInteractionIdElseNull)
+                .orElse(null);
+        if (existing != null) {
+            return existing;
+        }
+
         final C entity = factoryService.detachedEntity(commandLogEntryClass);
         entity.init(commandToReplay, ReplayState.PENDING, 0);
         entity.setParentInteractionId(null); // n/a for replay
@@ -343,6 +352,17 @@ public abstract class CommandLogEntryRepositoryAbstract<C extends CommandLogEntr
         persist(entity);
 
         return entity;
+    }
+
+    private static Optional<UUID> interactionIdOf(final CommandDto commandDto) {
+        return Optional.ofNullable(commandDto.getInteractionId())
+                .flatMap(id -> {
+                    try {
+                        return Optional.of(UUID.fromString(id));
+                    } catch (final IllegalArgumentException ex) {
+                        return Optional.empty();
+                    }
+                });
     }
 
     @Override
@@ -395,6 +415,30 @@ public abstract class CommandLogEntryRepositoryAbstract<C extends CommandLogEntr
     }
 
     @Override
+    public List<CommandLogEntry> findForegroundSinceTimestamp(
+            final Timestamp since,
+            final @Nullable Integer limitIfAny) {
+        var query = Query.named(commandLogEntryClass, CommandLogEntry.Nq.FIND_FOREGROUND_BY_TIMESTAMP_AFTER)
+                .withParameter("from", since);
+        if (limitIfAny != null) {
+            query = query.withRange(QueryRange.limit(limitIfAny));
+        }
+        return _Casts.uncheckedCast(repositoryService().allMatches(query));
+    }
+
+    @Override
+    public List<CommandLogEntry> findForegroundBeforeTimestamp(
+            final Timestamp before,
+            final @Nullable Integer limitIfAny) {
+        var query = Query.named(commandLogEntryClass, CommandLogEntry.Nq.FIND_FOREGROUND_BY_TIMESTAMP_BEFORE)
+                .withParameter("to", before);
+        if (limitIfAny != null) {
+            query = query.withRange(QueryRange.limit(limitIfAny));
+        }
+        return _Casts.uncheckedCast(repositoryService().allMatches(query));
+    }
+
+    @Override
     public List<CommandLogEntry> findForegroundSinceTimestampAndCanBeExported(final Timestamp since) {
         return findForegroundSinceTimestampWithState(since, ReplayState.UNDEFINED);
     }
@@ -407,6 +451,17 @@ public abstract class CommandLogEntryRepositoryAbstract<C extends CommandLogEntr
     @Override
     public List<CommandLogEntry> findForegroundSinceTimestampAndWithReplayPendingOrFailed(final Timestamp since) {
         return findForegroundSinceTimestampWithStates(since, ReplayState.PENDING, ReplayState.FAILED);
+    }
+
+    @Override
+    public List<CommandLogEntry> findForegroundSinceTimestampAndWithReplayExcluded(final Timestamp since) {
+        return findForegroundSinceTimestampWithState(since, ReplayState.EXCLUDED);
+    }
+
+    @Override
+    public List<CommandLogEntry> findForegroundSinceTimestampAndWithReplayRecordedOrReplayed(final Timestamp since) {
+        return findForegroundSinceTimestampWithStates(
+                since, ReplayState.UNDEFINED, ReplayState.EXPORTED, ReplayState.OK);
     }
 
     /**
@@ -432,6 +487,20 @@ public abstract class CommandLogEntryRepositoryAbstract<C extends CommandLogEntr
                                 .withParameter("from", from)
                                 .withParameter("replayState1", replayState1)
                                 .withParameter("replayState2", replayState2)));
+    }
+
+    private List<CommandLogEntry> findForegroundSinceTimestampWithStates(
+            final Timestamp from,
+            final ReplayState replayState1,
+            final ReplayState replayState2,
+            final ReplayState replayState3) {
+        return _Casts.uncheckedCast(
+                repositoryService().allMatches(
+                        Query.named(commandLogEntryClass, CommandLogEntry.Nq.FIND_FOREGROUND_BY_TIMESTAMP_AFTER_AND_THREE_REPLAY_STATES)
+                                .withParameter("from", from)
+                                .withParameter("replayState1", replayState1)
+                                .withParameter("replayState2", replayState2)
+                                .withParameter("replayState3", replayState3)));
     }
 
     private RepositoryService repositoryService() {

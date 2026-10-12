@@ -18,21 +18,16 @@
  */
 package org.apache.causeway.core.metamodel.specloader;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Vector;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.context.HasMetaModelContext;
@@ -43,6 +38,10 @@ import org.apache.causeway.core.metamodel.facets.all.named.MemberNamedFacet;
 import org.apache.causeway.core.metamodel.facets.all.named.ObjectNamedFacet;
 import org.apache.causeway.core.metamodel.facets.collections.CollectionFacet;
 import org.apache.causeway.core.mmtestsupport.MetaModelContext_forTesting;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import lombok.Getter;
 
@@ -72,12 +71,12 @@ implements HasMetaModelContext {
         var specification = getSpecificationLoader().loadSpecification(typeUnderTest);
         // then
         assertTrue(specification.isSingular());
-        assertEquals(typeUnderTest.getName(), specification.getFullIdentifier());
+        assertEquals(typeUnderTest.getName(), specification.fullIdentifier());
 
-        final Facet collectionFacet = specification.getFacet(CollectionFacet.class);
+        final Facet collectionFacet = specification.lookupFacet(CollectionFacet.class).orElse(null);
         assertNull(collectionFacet);
 
-        final TypeOfFacet typeOfFacet = specification.getFacet(TypeOfFacet.class);
+        final TypeOfFacet typeOfFacet = specification.lookupFacet(TypeOfFacet.class).orElse(null);
         assertNull(typeOfFacet);
 
         var namedFacet = specification.lookupFacet(ObjectNamedFacet.class)
@@ -107,12 +106,12 @@ implements HasMetaModelContext {
                 ? java.lang.reflect.Array.class
                 : typeUnderTest;
 
-        assertEquals(containerType.getName(), specification.getFullIdentifier());
+        assertEquals(containerType.getName(), specification.fullIdentifier());
 
-        var collectionFacet = specification.getFacet(CollectionFacet.class);
+        var collectionFacet = specification.lookupFacet(CollectionFacet.class).orElse(null);
         assertNotNull(collectionFacet);
 
-        var typeOfFacet = specification.getFacet(TypeOfFacet.class);
+        var typeOfFacet = specification.lookupFacet(TypeOfFacet.class).orElse(null);
         assertNotNull(typeOfFacet);
         assertEquals(Optional.of(containerType), typeOfFacet.value().containerType());
         assertEquals(Object.class, typeOfFacet.value().elementType());

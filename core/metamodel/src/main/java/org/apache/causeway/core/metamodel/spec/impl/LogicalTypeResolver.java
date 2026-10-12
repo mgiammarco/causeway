@@ -20,13 +20,13 @@ package org.apache.causeway.core.metamodel.spec.impl;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.causeway.applib.annotation.DomainObject;
 import org.apache.causeway.applib.id.LogicalType;
-import org.apache.causeway.commons.internal.collections._Maps;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
-
 import org.jspecify.annotations.NonNull;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -41,7 +41,7 @@ record LogicalTypeResolver(
         Map<String, LogicalType> logicalTypeByName) {
 
     LogicalTypeResolver() {
-        this(_Maps.newConcurrentHashMap());
+        this(new ConcurrentHashMap<>());
     }
 
     /**
@@ -71,9 +71,8 @@ record LogicalTypeResolver(
 
         var logicalTypeName = spec.logicalTypeName();
 
-        if(logicalTypeByName.containsKey(logicalTypeName)) {
-            return spec;
-        }
+        if(logicalTypeByName.containsKey(logicalTypeName))
+			return spec;
 
         // collect concrete classes (do not collect abstract or anonymous types or interfaces)
         if(!spec.isAbstract()
@@ -93,7 +92,7 @@ record LogicalTypeResolver(
     ObjectSpecification registerAliases(final @NonNull ObjectSpecification spec) {
 
         // adding aliases to the lookup map
-        spec.getAliases()
+        spec.aliases()
         .forEach(alias->{
                 putWithWarnOnOverride(alias.logicalName(), spec);
         });
@@ -106,7 +105,7 @@ record LogicalTypeResolver(
     private boolean hasTypeIdentity(final ObjectSpecification spec) {
         // anonymous inner classes (eg org.estatio.dom.WithTitleGetter$ToString$1)
         // don't have type identity; hence the guard.
-        return spec.getCorrespondingClass().getCanonicalName()!=null;
+        return spec.correspondingClass().getCanonicalName()!=null;
     }
 
     private void putWithWarnOnOverride(
@@ -124,7 +123,7 @@ record LogicalTypeResolver(
                     + "%s -> %s\n "
                     + "This will result in the meta-model validation to fail.",
                     logicalTypeName, previousMapping.correspondingClass(),
-                    logicalTypeName, spec.getCorrespondingClass());
+                    logicalTypeName, spec.correspondingClass());
             log.warn(msg);
         }
 

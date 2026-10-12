@@ -30,12 +30,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-import jakarta.annotation.Priority;
-import jakarta.inject.Named;
-import jakarta.validation.constraints.Digits;
-
-import org.springframework.stereotype.Service;
-
 import org.apache.causeway.applib.annotation.Domain;
 import org.apache.causeway.applib.annotation.DomainObject;
 import org.apache.causeway.applib.annotation.DomainObjectLayout;
@@ -55,6 +49,7 @@ import org.apache.causeway.applib.mixins.system.DomainChangeRecord;
 import org.apache.causeway.applib.mixins.system.HasInteractionId;
 import org.apache.causeway.applib.services.bookmark.Bookmark;
 import org.apache.causeway.applib.services.command.Command;
+import org.apache.causeway.applib.services.command.CommandRecordingSuppressed;
 import org.apache.causeway.applib.services.commanddto.HasCommandDto;
 import org.apache.causeway.applib.services.commanddto.conmap.UserDataKeys;
 import org.apache.causeway.applib.services.tablecol.TableColumnOrderForCollectionTypeAbstract;
@@ -69,7 +64,11 @@ import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.extensions.commandlog.applib.CausewayModuleExtCommandLogApplib;
 import org.apache.causeway.schema.cmd.v2.CommandDto;
 import org.apache.causeway.schema.cmd.v2.MapDto;
+import org.springframework.stereotype.Service;
 
+import jakarta.annotation.Priority;
+import jakarta.inject.Named;
+import jakarta.validation.constraints.Digits;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -96,7 +95,7 @@ import lombok.experimental.UtilityClass;
         cssClassUiEvent = CommandLogEntry.CssClassUiEvent.class,
         layoutUiEvent = CommandLogEntry.LayoutUiEvent.class)
 public interface CommandLogEntry
-extends Comparable<CommandLogEntry>, DomainChangeRecord, HasCommandDto {
+extends Comparable<CommandLogEntry>, DomainChangeRecord, HasCommandDto, CommandRecordingSuppressed {
 
     public final static String LOGICAL_TYPE_NAME = CausewayModuleExtCommandLogApplib.NAMESPACE + ".CommandLogEntry";
     public static final String SCHEMA = CausewayModuleExtCommandLogApplib.SCHEMA;
@@ -144,8 +143,11 @@ extends Comparable<CommandLogEntry>, DomainChangeRecord, HasCommandDto {
          * primary before the production database was restored to the secondary.
          */
         public static final String FIND_MOST_RECENT_COMPLETED           = LOGICAL_TYPE_NAME + ".findMostRecentCompleted";
+        public static final String FIND_FOREGROUND_BY_TIMESTAMP_AFTER   = LOGICAL_TYPE_NAME + ".findForegroundByTimestampAfter";
+        public static final String FIND_FOREGROUND_BY_TIMESTAMP_BEFORE  = LOGICAL_TYPE_NAME + ".findForegroundByTimestampBefore";
         public static final String FIND_FOREGROUND_BY_TIMESTAMP_AFTER_AND_REPLAY_STATE  = LOGICAL_TYPE_NAME + ".findForegroundByTimestampAfterAndReplayState";
         public static final String FIND_FOREGROUND_BY_TIMESTAMP_AFTER_AND_REPLAY_STATES = LOGICAL_TYPE_NAME + ".findForegroundByTimestampAfterAndReplayStates";
+        public static final String FIND_FOREGROUND_BY_TIMESTAMP_AFTER_AND_THREE_REPLAY_STATES = LOGICAL_TYPE_NAME + ".findForegroundByTimestampAfterAndThreeReplayStates";
 
         public static final String FIND_BACKGROUND_AND_NOT_YET_STARTED  = LOGICAL_TYPE_NAME + ".findBackgroundAndNotYetStarted";
         public static final String FIND_RECENT_BACKGROUND_BY_TARGET     = LOGICAL_TYPE_NAME + ".findRecentBackgroundByTarget";
@@ -154,6 +156,13 @@ extends Comparable<CommandLogEntry>, DomainChangeRecord, HasCommandDto {
     @Programmatic
     default void sync(final Command command) {
 
+        setStartedAt(command.getStartedAt());
+        setCompletedAt(command.getCompletedAt());
+
+        var replayState = getReplayState();
+        if(replayState != null && !replayState.isExportable() && !replayState.isExported())
+			return;
+
         setInteractionId(command.getInteractionId());
         setUsername(command.getUsername());
         setTimestamp(command.getTimestamp());
@@ -161,9 +170,6 @@ extends Comparable<CommandLogEntry>, DomainChangeRecord, HasCommandDto {
         setCommandDto(command.getCommandDto());
         setTarget(command.getTarget());
         setLogicalMemberIdentifier(command.getLogicalMemberIdentifier());
-
-        setStartedAt(command.getStartedAt());
-        setCompletedAt(command.getCompletedAt());
 
         setResult(command.getResult());
         setException(command.getException());
@@ -633,6 +639,8 @@ extends Comparable<CommandLogEntry>, DomainChangeRecord, HasCommandDto {
         } else {
             setReplayState(org.apache.causeway.extensions.commandlog.applib.dom.ReplayState.FAILED);
             setReplayStateFailureReason(_Strings.trimmed(analysis, 255));
+            // also retain the fuller failure detail on the exception field
+            setException(analysis);
         }
 
     }
@@ -658,7 +666,7 @@ extends Comparable<CommandLogEntry>, DomainChangeRecord, HasCommandDto {
         public TableColumnOrderDefault() { super(CommandLogEntry.class); }
 
         @Override
-        protected List<String> orderParented(final Object parent, final String collectionId, final List<String> propertyIds) {
+        protected List<String> orderParented(final Class<?> parentType, final String collectionId, final List<String> propertyIds) {
             return ordered(propertyIds);
         }
 

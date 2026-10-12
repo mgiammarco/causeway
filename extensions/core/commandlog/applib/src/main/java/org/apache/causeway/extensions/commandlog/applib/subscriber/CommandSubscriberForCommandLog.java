@@ -33,6 +33,7 @@ import org.apache.causeway.applib.services.repository.RepositoryService;
 import org.apache.causeway.applib.util.schema.CommandDtoUtils;
 import org.apache.causeway.commons.functional.Try;
 import org.apache.causeway.core.config.CausewayConfiguration;
+import org.apache.causeway.core.config.CausewayConfiguration.Extensions.CommandLog.RecordingSupport;
 import org.apache.causeway.extensions.commandlog.applib.CausewayModuleExtCommandLogApplib;
 import org.apache.causeway.extensions.commandlog.applib.dom.CommandLogEntry;
 import org.apache.causeway.extensions.commandlog.applib.dom.CommandLogEntryRepository;
@@ -61,6 +62,7 @@ public class CommandSubscriberForCommandLog implements CommandSubscriber {
     final RepositoryService repositoryService;
     final CausewayConfiguration causewayConfiguration;
     final ClockService clockService;
+    final CommandLogPauseState commandLogPauseState;
 
     @Override
     public boolean isEnabled() {
@@ -70,7 +72,7 @@ public class CommandSubscriberForCommandLog implements CommandSubscriber {
     @Override
     public void onReady(final Command command) {
 
-        if (!isEnabled())
+        if (!isEnabled() || commandLogPauseState.isPaused())
             return;
 
         var existingCommandLogEntryIfAny =
@@ -103,6 +105,7 @@ public class CommandSubscriberForCommandLog implements CommandSubscriber {
             }
 
         } else {
+            guardAgainstPendingBackgroundCommands();
             var parentInteractionId = command.getParentInteractionId(); // will be null in most (all?) cases
             commandLogEntryRepository.createEntryAndPersist(command, parentInteractionId, ExecuteIn.FOREGROUND);
         }
@@ -112,7 +115,7 @@ public class CommandSubscriberForCommandLog implements CommandSubscriber {
     @Override
     public void onStarted(final Command command) {
 
-        if (!isEnabled())
+        if (!isEnabled() || commandLogPauseState.isPaused())
             return;
 
         commandLogEntryRepository.findByInteractionId(command.getInteractionId())
@@ -124,13 +127,26 @@ public class CommandSubscriberForCommandLog implements CommandSubscriber {
     @Override
     public void onCompleted(final Command command) {
 
-        if (!isEnabled())
+        if (!isEnabled() || commandLogPauseState.isPaused())
             return;
 
         commandLogEntryRepository.findByInteractionId(command.getInteractionId())
             .ifPresent(commandLogEntry -> {
                 commandLogEntry.sync(command);
             });
+    }
+
+    private void guardAgainstPendingBackgroundCommands() {
+        if (causewayConfiguration.extensions().commandLog().recordingSupport() != RecordingSupport.ENABLED) {
+            return;
+        }
+        final var pendingBackgroundCommands = commandLogEntryRepository.findBackgroundAndNotYetStarted();
+        if (!pendingBackgroundCommands.isEmpty()) {
+            throw new IllegalStateException(String.format(
+                    "Cannot continue command-log recording while %,d background command(s) are pending execution. "
+                    + "Please wait until pending background commands have executed and committed before continuing.",
+                    pendingBackgroundCommands.size()));
+        }
     }
 
 }

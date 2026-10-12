@@ -21,8 +21,6 @@ package org.apache.causeway.core.metamodel.facets.properties.property.modify;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
-import org.jspecify.annotations.NonNull;
-
 import org.apache.causeway.applib.annotation.Property;
 import org.apache.causeway.applib.events.domain.AbstractDomainEvent;
 import org.apache.causeway.applib.events.domain.PropertyDomainEvent;
@@ -35,6 +33,7 @@ import org.apache.causeway.core.metamodel.facetapi.Facet;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
 import org.apache.causeway.core.metamodel.facets.DomainEventFacetAbstract;
 import org.apache.causeway.core.metamodel.facets.DomainEventHelper;
+import org.apache.causeway.core.metamodel.facets.FacetFactory.ProcessMethodContext;
 import org.apache.causeway.core.metamodel.facets.object.domainobject.domainevents.PropertyDomainEventDefaultFacetForDomainObjectAnnotation;
 import org.apache.causeway.core.metamodel.facets.propcoll.accessor.PropertyOrCollectionAccessorFacet;
 import org.apache.causeway.core.metamodel.interactions.DisablingInteractionAdvisor;
@@ -47,6 +46,7 @@ import org.apache.causeway.core.metamodel.interactions.vis.VisibilityContext;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
 import org.apache.causeway.core.metamodel.spec.feature.OneToOneAssociation;
+import org.jspecify.annotations.NonNull;
 
 public class PropertyDomainEventFacet
 extends DomainEventFacetAbstract<PropertyDomainEvent<?, ?>>
@@ -69,9 +69,10 @@ implements
      */
     public static PropertyDomainEventFacet create(
             final @NonNull Optional<Property> propertyIfAny,
-            final @NonNull Class<?> classBeingIntrospected,
-            final @NonNull Optional<PropertyOrCollectionAccessorFacet> getterFacet,
-            final @NonNull FacetHolder facetHolder) {
+            final @NonNull ProcessMethodContext processMethodContext,
+            final @NonNull Optional<PropertyOrCollectionAccessorFacet> getterFacet) {
+
+    	final FacetHolder facetHolder = processMethodContext.facetHolder();
 
         var propertyDomainEventFacet = propertyIfAny
                 .map(Property::domainEvent)
@@ -81,8 +82,9 @@ implements
                 .orElseGet(()->{
 
                     /* only used to lookup {@link PropertyDomainEventDefaultFacetForDomainObjectAnnotation} */
-                    var typeSpec = facetHolder.getSpecificationLoader().loadSpecification(classBeingIntrospected);
-                    var typeFromDomainObject = typeSpec.getFacet(PropertyDomainEventDefaultFacetForDomainObjectAnnotation.class);
+                    var typeSpec = processMethodContext.loadSpecificationTypeOnly(processMethodContext.cls());
+                    var typeFromDomainObject = typeSpec.lookupFacet(PropertyDomainEventDefaultFacetForDomainObjectAnnotation.class)
+                    		.orElse(null);
 
                     return typeFromDomainObject != null
                             ? new PropertyDomainEventFacet(
@@ -94,6 +96,38 @@ implements
                 });
 
         return propertyDomainEventFacet;
+    }
+
+    /**
+     * Creates a mixee-specific (object-type-specific) overlay facet for a mixed-in property, honoring the
+     * mixee's {@code @DomainObject} property domain-event default. Returns empty when the mixee declares no
+     * such default. The overlay is {@link Facet#isObjectTypeSpecific() object-type-specific} so it is
+     * installed on the mixed-in member's local facet holder rather than the shared mixin facet holder.
+     */
+    public static Optional<PropertyDomainEventFacet> createObjectTypeSpecificForMixin(
+            final @NonNull ObjectSpecification mixeeSpec,
+            final @NonNull FacetHolder facetHolder) {
+        return mixeeSpec
+                .lookupFacet(PropertyDomainEventDefaultFacetForDomainObjectAnnotation.class)
+                .map(facetOnMixee -> new ObjectTypeSpecific(
+                        facetOnMixee.getEventType(),
+                        EventTypeOrigin.ANNOTATED_OBJECT,
+                        Optional.empty(),
+                        facetHolder));
+    }
+
+    private static class ObjectTypeSpecific extends PropertyDomainEventFacet {
+        protected ObjectTypeSpecific(
+                final Class<? extends PropertyDomainEvent<?, ?>> eventType,
+                final EventTypeOrigin eventTypeOrigin,
+                final Optional<PropertyOrCollectionAccessorFacet> getterFacet,
+                final FacetHolder holder) {
+            super(eventType, eventTypeOrigin, getterFacet, holder);
+        }
+        @Override
+        public boolean isObjectTypeSpecific() {
+            return true;
+        }
     }
 
     // -- CONSTRUCTION
@@ -176,9 +210,7 @@ implements
         if(!isPostable()) return null; // bale out
 
         // if this is a mixin, then this ain't true.
-        if(!(ic instanceof ProposedHolder)) return null;
-
-        final ProposedHolder ph = (ProposedHolder) ic;
+        if(!(ic instanceof final ProposedHolder ph)) return null;
 
         final Object oldValue = getterFacetIfAny.getAssociationValueAsPojo(ic.target(), ic.initiatedBy());
         final ManagedObject proposedAdapter = ph.proposed();
@@ -192,9 +224,8 @@ implements
                         oldValue, proposedValue);
         if (event != null && event.isInvalid()) {
             final TranslatableString reasonTranslatable = event.getInvalidityReasonTranslatable();
-            if(reasonTranslatable != null) {
-                return reasonTranslatable.translate(translationService, translationContext);
-            }
+            if(reasonTranslatable != null)
+				return reasonTranslatable.translate(translationService, translationContext);
             return event.getInvalidityReason();
         }
 

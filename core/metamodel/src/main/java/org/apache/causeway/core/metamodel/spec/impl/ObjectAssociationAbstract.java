@@ -22,8 +22,8 @@ import org.apache.causeway.applib.Identifier;
 import org.apache.causeway.commons.functional.Either;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
-import org.apache.causeway.core.metamodel.facets.FacetedMethod;
 import org.apache.causeway.core.metamodel.facets.objectvalue.mandatory.MandatoryFacet;
 import org.apache.causeway.core.metamodel.facets.propcoll.accessor.PropertyOrCollectionAccessorFacet;
 import org.apache.causeway.core.metamodel.facets.properties.choices.PropertyChoicesFacet;
@@ -37,7 +37,7 @@ abstract class ObjectAssociationAbstract
 extends ObjectMemberAbstract
 implements ObjectAssociation {
     private static final long serialVersionUID = 1L;
-    
+
     private final ObjectSpecification elementType;
 
     protected ObjectAssociationAbstract(
@@ -47,9 +47,8 @@ implements ObjectAssociation {
             final ObjectSpecification elementType) {
 
         super(featureIdentifier, facetedMethod, featureType);
-        if (elementType == null) {
-            throw new IllegalArgumentException("field type for '" + getId() + "' must exist");
-        }
+        if (elementType == null)
+			throw new IllegalArgumentException("field type for '" + getId() + "' must exist");
         this.elementType = elementType;
     }
 
@@ -61,13 +60,13 @@ implements ObjectAssociation {
     }
 
     @Override
-    public FacetHolder getFacetHolder() {
+    public FacetHolder facetHolder() {
         return getFacetedMethod();
     }
 
     @Override
     public ObjectSpecification getDeclaringType() {
-        final PropertyOrCollectionAccessorFacet facet = getFacet(PropertyOrCollectionAccessorFacet.class);
+        final PropertyOrCollectionAccessorFacet facet = lookupFacet(PropertyOrCollectionAccessorFacet.class).orElseThrow();
         return facet.getDeclaringType();
     }
 

@@ -22,18 +22,15 @@ import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.internal.reflection._GenericResolver.ResolvedMethod;
 import org.apache.causeway.core.config.progmodel.ProgrammingModelConstants.ObjectSupportMethod;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.facetapi.Facet;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
-import org.apache.causeway.core.metamodel.facetapi.FacetUtil;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facets.FacetFactory;
-import org.apache.causeway.core.metamodel.facets.FacetedMethod;
 import org.apache.causeway.core.metamodel.facets.object.cssclass.method.CssClassFacetViaCssClassMethod;
 import org.apache.causeway.core.metamodel.facets.object.disabled.DisabledObjectFacet;
 import org.apache.causeway.core.metamodel.facets.object.disabled.method.DisabledObjectFacetViaMethod;
@@ -48,6 +45,8 @@ import org.apache.causeway.core.metamodel.methods.MethodFinder;
 import org.apache.causeway.core.metamodel.methods.MethodPrefixBasedFacetFactoryAbstract;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectMember;
+
+import jakarta.inject.Inject;
 
 /**
  * Installs {@link DisabledObjectFacetViaMethod}
@@ -93,36 +92,31 @@ extends MethodPrefixBasedFacetFactoryAbstract {
 
     @Override
     public void process(final ProcessMethodContext processMethodContext) {
-        final FacetedMethod member = processMethodContext.getFacetHolder();
-        final Class<?> owningClass = processMethodContext.getCls();
-        var owningSpec = getSpecificationLoader().loadSpecification(owningClass);
+        final FacetedMethod member = processMethodContext.facetHolder();
+        final Class<?> owningClass = processMethodContext.cls();
+        var owningSpec = processMethodContext.loadSpecificationTypeOnly(owningClass);
 
         owningSpec.lookupFacet(DisabledObjectFacet.class)
-	        .map(disabledObjectFacet->disabledObjectFacet.clone(member))
-	        .ifPresent(FacetUtil::addFacet);
+	        .ifPresent(disabledObjectFacet->disabledObjectFacet.clone(member));
 
         owningSpec.lookupFacet(HiddenObjectFacet.class)
-	        .map(hiddenObjectFacet->hiddenObjectFacet.copyTo(member))
-	        .ifPresent(FacetUtil::addFacet);
+	        .ifPresent(hiddenObjectFacet->hiddenObjectFacet.copyTo(member));
     }
 
     // -- HELPER
 
     private void inferTitleFromToString(final ProcessClassContext processClassContext) {
-
         var toString = ObjectSupportMethod.TO_STRING;
-
         MethodFinder
             .publicOnly(
-                    processClassContext.getCls(),
+                    processClassContext.cls(),
                     toString.getMethodNames())
             .withReturnTypeAnyOf(toString.getReturnTypeCategory().getReturnTypes())
             .streamMethodsMatchingSignature(NO_ARG)
             .peek(processClassContext::removeMethod)
-            .forEach(method->{
-                addFacetIfPresent(TitleFacetFromToStringMethod
-                        .create(method, processClassContext.getFacetHolder()));
-            });
+            .forEach(method->
+                TitleFacetFromToStringMethod
+                        .create(method, processClassContext.facetHolder()));
     }
 
     private void processObjectSupport(
@@ -132,17 +126,15 @@ extends MethodPrefixBasedFacetFactoryAbstract {
             final BiFunction<ResolvedMethod, FacetHolder, Optional<? extends Facet>> objectSupportFacetConstructor) {
         MethodFinder
             .objectSupport(
-                    processClassContext.getCls(),
+                    processClassContext.cls(),
                     objectSupportMethodEnum.getMethodNames(),
-                    processClassContext.getIntrospectionPolicy())
+                    processClassContext.introspectionPolicy())
             .withReturnTypeAnyOf(objectSupportMethodEnum.getReturnTypeCategory().getReturnTypes())
             .streamMethodsMatchingSignature(methodSignature)
             .peek(processClassContext::removeMethod)
-            .forEach(method->{
-                addFacetIfPresent(objectSupportFacetConstructor
-                        .apply(method, processClassContext.getFacetHolder()))
-                .orElse(null);
-            });
+            .forEach(method->
+                objectSupportFacetConstructor
+                        .apply(method, processClassContext.facetHolder()));
     }
 
 }

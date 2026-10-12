@@ -18,11 +18,8 @@
  */
 package org.apache.causeway.core.metamodel.interactions.managed;
 
-import java.io.Serializable;
+import java.util.Objects;
 import java.util.Optional;
-
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 import org.apache.causeway.applib.Identifier;
 import org.apache.causeway.applib.annotation.Where;
@@ -32,20 +29,17 @@ import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.functional.Railway;
 import org.apache.causeway.commons.internal.assertions._Assert;
 import org.apache.causeway.commons.internal.base._Lazy;
-import org.apache.causeway.commons.internal.base._NullSafe;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.interactions.InteractionHead;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
 import org.apache.causeway.core.metamodel.object.ManagedObjects;
-import org.apache.causeway.core.metamodel.objectmanager.ObjectManager;
-import org.apache.causeway.core.metamodel.objectmanager.memento.ObjectMemento;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectMember.AuthorizationException;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
-import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 
 public final class ManagedAction extends ManagedMember {
@@ -167,9 +161,8 @@ public final class ManagedAction extends ManagedMember {
 
     private ManagedObject route(final @Nullable ManagedObject actionResult) {
 
-        if(ManagedObjects.isNullOrUnspecifiedOrEmpty(actionResult)) {
+        if(ManagedObjects.isNullOrUnspecifiedOrEmpty(actionResult))
             return ManagedObject.empty(action.getReturnType());
-        }
 
         var resultPojo = actionResult.getPojo();
         var objManager = mmc().getObjectManager();
@@ -177,9 +170,9 @@ public final class ManagedAction extends ManagedMember {
         var resultAdapter = getRoutingServices().stream()
                 .filter(routingService->routingService.canRoute(resultPojo))
                 .map(routingService->routingService.route(resultPojo))
-                .filter(_NullSafe::isPresent)
+                .filter(Objects::nonNull)
                 .map(objManager::adapt)
-                .filter(_NullSafe::isPresent)
+                .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(actionResult);
 
@@ -204,34 +197,6 @@ public final class ManagedAction extends ManagedMember {
 
     private ServiceRegistry getServiceRegistry() {
         return mmc().getServiceRegistry();
-    }
-
-    // -- MEMENTO FOR ARGUMENT LIST
-
-    public MementoForArgs getMementoForArgs(final Can<ManagedObject> args) {
-        return MementoForArgs.create(
-                getMetaModel().getMetaModelContext().getObjectManager(),
-                args);
-    }
-
-    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-    public static class MementoForArgs implements Serializable {
-        private static final long serialVersionUID = 1L;
-
-        static MementoForArgs create(
-                final ObjectManager objectManager,
-                final Can<ManagedObject> args) {
-            return new MementoForArgs(args.map(objectManager::mementifyElseFail));
-        }
-
-        private final Can<ObjectMemento> argsMementos;
-
-        public Can<ManagedObject> getArgumentList(final ObjectAction actionMeta) {
-            var argTypes = actionMeta.getParameterTypes();
-            var objectManager = actionMeta.getMetaModelContext().getObjectManager();
-            return argsMementos.zipMap(argTypes, (argMemento, argSpec)->
-                objectManager.demementify(argMemento));
-        }
     }
 
 }

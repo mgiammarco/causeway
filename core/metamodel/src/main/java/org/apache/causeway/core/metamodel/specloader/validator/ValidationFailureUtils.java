@@ -21,9 +21,10 @@ package org.apache.causeway.core.metamodel.specloader.validator;
 import java.lang.annotation.Annotation;
 
 import org.apache.causeway.applib.Identifier;
+import org.apache.causeway.core.config.beans.CausewayBeanMetaData;
 import org.apache.causeway.core.config.progmodel.ProgrammingModelConstants;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
-import org.apache.causeway.core.metamodel.facets.FacetedMethod;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectMember;
 
@@ -44,13 +45,13 @@ public final class ValidationFailureUtils {
     }
 
     public void raiseMemberIdClash(
-            final ObjectSpecification declaringType,
+    		final CausewayBeanMetaData declaringType,
             final ObjectMember memberA,
             final ObjectMember memberB) {
         ValidationFailure.raise(memberB,
                 ProgrammingModelConstants.MessageTemplate.MEMBER_ID_CLASH
                     .builder()
-                    .addVariable("type", declaringType.fqcn())
+                    .addVariable("type", declaringType.correspondingClass().getName())
                     .addVariable("memberId", ""+memberB.getId())
                     .addVariable("member1", memberA.getFeatureIdentifier().getFullIdentityString())
                     .addVariable("member2", memberB.getFeatureIdentifier().getFullIdentityString())

@@ -25,12 +25,12 @@ import jakarta.validation.constraints.Digits;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.springframework.boot.test.util.TestPropertyValues;
 
 import org.apache.causeway.applib.annotation.DomainObject;
 import org.apache.causeway.applib.annotation.Property;
+import org.apache.causeway.applib.annotation.ValueSemantics;
+import org.apache.causeway.applib.value.semantics.NumericValueSemantics;
 import org.apache.causeway.core.metamodel.commons.ViewOrEditMode;
 import org.apache.causeway.core.metamodel.valuesemantics.BigDecimalValueSemantics;
 import org.apache.causeway.viewer.wicket.model.value.ConverterBasedOnValueSemantics;
@@ -50,11 +50,12 @@ class BigDecimalConverterTest {
     final BigDecimal bd_123_4500_scale4 = new BigDecimal("123.4500").setScale(4);
 
     private ConverterTester<BigDecimal> converterTester() {
-        return new ConverterTester<>(BigDecimal.class, TestPropertyValues.empty(), new BigDecimalValueSemantics());
+        return converterTester(TestPropertyValues.empty());
     }
 
     private ConverterTester<BigDecimal> converterTester(final TestPropertyValues testPropertyValues) {
-        return new ConverterTester<>(BigDecimal.class, testPropertyValues, new BigDecimalValueSemantics());
+        return new ConverterTester<>(BigDecimal.class, testPropertyValues,
+                new BigDecimalValueSemantics(), new BigDecimalValueSemantics.LocaleGroupingDisplay());
     }
 
     @Test
@@ -65,10 +66,11 @@ class BigDecimalConverterTest {
     }
 
     @Test
-    void scale4_english() {
+    void scaleNone_english() {
         var converterTester = converterTester();
-        converterTester.setScenario(Locale.ENGLISH, newConverter(converterTester, CustomerScale4.class));
-        converterTester.assertRoundtrip(bd_123_45_scale4, "123.4500", "123.45");    // the 2nd value is the bigdecimal as rendered for parsing; by default we do not preserve fractional digits/scale
+        converterTester.setScenario(Locale.ENGLISH, newConverter(converterTester, CustomerScaleNone.class));
+        // the 2nd value is the BigDecimal as given as UI input; by default we do not preserve fractional digits/scale
+        converterTester.assertRoundtrip(bd_123_45_scale4, "123.4500", "123.45");
     }
 
     @Test
@@ -77,6 +79,7 @@ class BigDecimalConverterTest {
             "causeway.valueTypes.bigDecimal.editing.preserveScale=true"));
         converterTester.setScenario(Locale.ENGLISH, newConverter(converterTester, CustomerScale4.class));
         converterTester.assertRoundtrip(bd_123_45_scale4, "123.4500", "123.4500");
+        converterTester.assertRoundtrip(bd_123_45_scale4, "123.45", "123.4500"); // also supports padding of zeros
     }
 
     @Test
@@ -98,29 +101,23 @@ class BigDecimalConverterTest {
 
     @Test
     void scale2_english_withThousandSeparators_not_allowed() {
-        var converterTester = converterTester(TestPropertyValues.of(
-            "causeway.valueTypes.bigDecimal.display.useGroupingSeparator=false"));
-        assertThat(converterTester.getConfigurationForBigDecimalValueType().display().useGroupingSeparator()).isFalse();
-
-        converterTester.setScenario(Locale.ENGLISH, newConverter(converterTester, CustomerScale2.class));
+        var converterTester = converterTester();
+        converterTester.setScenario(Locale.ENGLISH, newConverter(converterTester, CustomerScale2LocaleGrouping.class));
         converterTester.assertConversionFailure("789,123.45", "Invalid value '789,123.45'; do not use the ',' grouping separator");
     }
 
     @Test
     void scale2_english_withThousandSeparators_allowed() {
-        var converterTester = converterTester(TestPropertyValues.of(
-            "causeway.valueTypes.bigDecimal.display.useGroupingSeparator=true"));
-        assertThat(converterTester.getConfigurationForBigDecimalValueType().display().useGroupingSeparator()).isTrue();
-
+        var converterTester = converterTester();
         converterTester.setScenario(Locale.ENGLISH, newConverter(converterTester, CustomerScale2.class));
-        converterTester.assertRoundtrip(bd_789123_45_scale2, "789123.45");
+        converterTester.assertRoundtrip(bd_789123_45_scale2, "789 123.45");
     }
 
     @Test
     void scale2_english_withoutThousandSeparators() {
         var converterTester = converterTester();
         converterTester.setScenario(Locale.ENGLISH, newConverter(converterTester, CustomerScale2.class));
-        converterTester.assertRoundtrip(bd_789123_45_scale2, "789123.45", "789123.45");
+        converterTester.assertRoundtrip(bd_789123_45_scale2, "789123.45", "789 123.45");
     }
 
     @Test
@@ -161,9 +158,18 @@ class BigDecimalConverterTest {
     }
 
     @DomainObject
+    static class CustomerScale2LocaleGrouping {
+        @Property @Getter @Setter
+        @Digits(fraction = 2, integer = 20)
+        @ValueSemantics(provider = NumericValueSemantics.LOCALE_GROUPING_DISPLAY)
+        private BigDecimal value;
+    }
+
+    @DomainObject
     static class CustomerScale4 {
         @Property @Getter @Setter
-        @Digits(fraction = 4, integer = 20)
+        //@Digits(fraction = 4, integer = 20) //FIXME there is also Column ... use a parameterized test
+        @ValueSemantics(minFractionalDigits = 4)
         private BigDecimal value;
     }
 

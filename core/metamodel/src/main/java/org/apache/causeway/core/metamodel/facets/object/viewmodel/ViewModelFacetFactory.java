@@ -20,15 +20,12 @@ package org.apache.causeway.core.metamodel.facets.object.viewmodel;
 
 import java.util.Objects;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.applib.services.bookmark.HmacAuthority;
 import org.apache.causeway.applib.services.jaxb.JaxbService;
 import org.apache.causeway.applib.services.urlencoding.UrlEncodingService;
 import org.apache.causeway.commons.internal.reflection._ClassCache;
 import org.apache.causeway.core.config.progmodel.ProgrammingModelConstants;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
-import org.apache.causeway.core.metamodel.facetapi.FacetUtil;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facetapi.MetaModelRefiner;
 import org.apache.causeway.core.metamodel.facets.FacetFactoryAbstract;
@@ -37,6 +34,8 @@ import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailure
 import org.apache.causeway.core.metamodel.util.hmac.HmacUrlCodec;
 import org.apache.causeway.core.metamodel.util.hmac.MementoHmacContext;
 import org.apache.causeway.core.metamodel.valuesemantics.ValueCodec;
+
+import jakarta.inject.Inject;
 
 public class ViewModelFacetFactory
 extends FacetFactoryAbstract
@@ -76,26 +75,21 @@ implements
     @Override
     public void process(final ProcessClassContext processClassContext) {
 
-        var facetHolder = processClassContext.getFacetHolder();
-        var type = processClassContext.getCls();
+        var facetHolder = processClassContext.facetHolder();
+        var type = processClassContext.cls();
 
         // XmlRootElement annotation (with default precedence)
         var hasXmlRootElementAnnotation = _ClassCache.getInstance().head(type).hasJaxbRootElementSemantics();
-        FacetUtil
-        .addFacetIfPresent(
-                ViewModelFacetForXmlRootElementAnnotation
-                .create(hasXmlRootElementAnnotation, hmacUrlCodec, jaxbService, facetHolder));
 
-        // (with high precedence)
-        FacetUtil
-        .addFacetIfPresent(
-            // either ViewModel interface (highest precedence)
-            ViewModelFacetForViewModelInterface.create(type, hmacUrlCodec, facetHolder)
-            // or Serializable interface (if any)
-            .or(()->ViewModelFacetForSerializableInterface.create(type, hmacUrlCodec, facetHolder))
-            // or else Java record (if any)
-            .or(()->ViewModelFacetForJavaRecord.create(type, mementoHmacContext, facetHolder))
-        );
+        ViewModelFacetForXmlRootElementAnnotation
+                .create(hasXmlRootElementAnnotation, hmacUrlCodec, jaxbService, facetHolder);
+
+        // either ViewModel interface (highest precedence)
+        ViewModelFacetForViewModelInterface.create(type, hmacUrlCodec, facetHolder)
+        // or Serializable interface (if any)
+        .or(()->ViewModelFacetForSerializableInterface.create(type, hmacUrlCodec, facetHolder))
+        // or else Java record (if any)
+        .or(()->ViewModelFacetForJavaRecord.create(type, mementoHmacContext, facetHolder));
 
         // DomainObject(nature=VIEW_MODEL) is managed by the DomainObjectAnnotationFacetFactory as a fallback strategy
     }
@@ -109,12 +103,12 @@ implements
 
             // ensure concrete viewmodel types have a ViewModelFacet
             if(!objectSpec.isAbstract()
-                    && objectSpec.getBeanSort().isViewModel()
+                    && objectSpec.beanSort().isViewModel()
                     && !objectSpec.viewmodelFacet().isPresent()) {
                 ValidationFailure.raiseFormatted(objectSpec,
                         ProgrammingModelConstants.MessageTemplate.VIEWMODEL_MISSING_SERIALIZATION_STRATEGY
                             .builder()
-                            .addVariable("type", objectSpec.getCorrespondingClass().getName())
+                            .addVariable("type", objectSpec.correspondingClass().getName())
                             .buildMessage());
             }
 
@@ -126,7 +120,7 @@ implements
                     ValidationFailure.raiseFormatted(objectSpec,
                             ProgrammingModelConstants.MessageTemplate.VIEWMODEL_CONFLICTING_SERIALIZATION_STRATEGIES
                                 .builder()
-                                .addVariable("type", objectSpec.getFullIdentifier())
+                                .addVariable("type", objectSpec.fullIdentifier())
                                 .addVariable("facetA", a.getClass().getSimpleName())
                                 .addVariable("facetB", b.getClass().getSimpleName())
                                 .buildMessage());

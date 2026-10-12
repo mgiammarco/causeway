@@ -18,15 +18,10 @@
  */
 package org.apache.causeway.core.metamodel.facets.actions.action;
 
-import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import org.springframework.boot.test.util.TestPropertyValues;
 
 import org.apache.causeway.applib.annotation.Action;
 import org.apache.causeway.applib.annotation.SemanticsOf;
@@ -38,6 +33,9 @@ import org.apache.causeway.core.metamodel.facets.FacetFactory.ProcessMethodConte
 import org.apache.causeway.core.metamodel.facets.actions.semantics.ActionSemanticsFacet;
 import org.apache.causeway.core.metamodel.facets.members.publish.execution.ExecutionPublishingFacet;
 import org.apache.causeway.core.metamodel.facets.members.publish.execution.ExecutionPublishingFacetForActionAnnotation;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.util.TestPropertyValues;
 
 class ActionAnnotationFacetFactoryTest_executionPublishing
 extends ActionAnnotationFacetFactoryTest {
@@ -77,7 +75,7 @@ extends ActionAnnotationFacetFactoryTest {
         // given
         allowingPublishingConfigurationToReturn(ActionConfigOptions.PublishingPolicy.IGNORE_QUERY_ONLY);
         actionScenario(ActionAnnotationFacetFactoryTest.Customer.class, "someAction", (processMethodContext, facetHolder, facetedMethod)->{
-            facetedMethod.addFacet(new ActionSemanticsFacet("Test", SemanticsOf.SAFE, facetedMethod));
+            new ActionSemanticsFacet("Test", SemanticsOf.SAFE, facetedMethod);
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
             // then
@@ -91,11 +89,11 @@ extends ActionAnnotationFacetFactoryTest {
         // given
         allowingPublishingConfigurationToReturn(ActionConfigOptions.PublishingPolicy.IGNORE_QUERY_ONLY);
         actionScenario(ActionAnnotationFacetFactoryTest.Customer.class, "someAction", (processMethodContext, facetHolder, facetedMethod)->{
-            facetedMethod.addFacet(new ActionSemanticsFacet("Test", SemanticsOf.IDEMPOTENT, facetedMethod));
+            new ActionSemanticsFacet("Test", SemanticsOf.IDEMPOTENT, facetedMethod);
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
             // then
-            final Facet facet = facetedMethod.getFacet(ExecutionPublishingFacet.class);
+            final Facet facet = facetedMethod.lookupFacet(ExecutionPublishingFacet.class).orElse(null);
             // we rely upon CommandAnnotationFacetFactory to add the facet only if there is no @Property specified also
             assertNull(facet);
         });
@@ -110,7 +108,7 @@ extends ActionAnnotationFacetFactoryTest {
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
             // then
-            Facet facet = facetedMethod.getFacet(ExecutionPublishingFacet.class);
+            Facet facet = facetedMethod.lookupFacet(ExecutionPublishingFacet.class).orElse(null);
             // we rely upon CommandAnnotationFacetFactory to add the facet only if there is no @Property specified also
             assertNull(facet);
         });
@@ -139,7 +137,7 @@ extends ActionAnnotationFacetFactoryTest {
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
             // then
-            final Facet facet = facetedMethod.getFacet(ExecutionPublishingFacet.class);
+            final Facet facet = facetedMethod.lookupFacet(ExecutionPublishingFacet.class).orElse(null);
             assertNull(facet);
         });
     }
@@ -154,7 +152,7 @@ extends ActionAnnotationFacetFactoryTest {
 
         allowingPublishingConfigurationToReturn(ActionConfigOptions.PublishingPolicy.IGNORE_QUERY_ONLY);
         actionScenario(Customer.class, "someAction", (processMethodContext, facetHolder, facetedMethod)->{
-            facetedMethod.addFacet(new ActionSemanticsFacet("Test", SemanticsOf.SAFE, facetedMethod));
+            new ActionSemanticsFacet("Test", SemanticsOf.SAFE, facetedMethod);
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
             // then
@@ -174,11 +172,11 @@ extends ActionAnnotationFacetFactoryTest {
 
         allowingPublishingConfigurationToReturn(ActionConfigOptions.PublishingPolicy.IGNORE_QUERY_ONLY);
         actionScenario(Customer.class, "someAction", (processMethodContext, facetHolder, facetedMethod)->{
-            facetedMethod.addFacet(new ActionSemanticsFacet("Test", SemanticsOf.IDEMPOTENT, facetedMethod));
+            new ActionSemanticsFacet("Test", SemanticsOf.IDEMPOTENT, facetedMethod);
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
             // then
-            final Facet facet = facetedMethod.getFacet(ExecutionPublishingFacet.class);
+            final Facet facet = facetedMethod.lookupFacet(ExecutionPublishingFacet.class).orElse(null);
             assertNotNull(facet);
             final ExecutionPublishingFacetForActionAnnotation facetImpl = (ExecutionPublishingFacetForActionAnnotation) facet;
             _Blackhole.consume(facetImpl);
@@ -200,7 +198,7 @@ extends ActionAnnotationFacetFactoryTest {
             processExecutionPublishing(facetFactory, processMethodContext);
 
             // then
-            final Facet facet = facetedMethod.getFacet(ExecutionPublishingFacet.class);
+            final Facet facet = facetedMethod.lookupFacet(ExecutionPublishingFacet.class).orElse(null);
             assertNotNull(facet);
             assertTrue(ExecutionPublishingFacet.isPublishingEnabled(facetedMethod));
             assertNoMethodsRemoved();
@@ -219,13 +217,13 @@ extends ActionAnnotationFacetFactoryTest {
         actionScenario(Customer.class, "someAction", (processMethodContext, facetHolder, facetedMethod)->{
 
             // given
-            facetedMethod.addFacet(new ActionSemanticsFacet("Test", SemanticsOf.SAFE, facetedMethod));
+            new ActionSemanticsFacet("Test", SemanticsOf.SAFE, facetedMethod);
 
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
 
             // then
-            final Facet facet = facetedMethod.getFacet(ExecutionPublishingFacet.class);
+            final Facet facet = facetedMethod.lookupFacet(ExecutionPublishingFacet.class).orElse(null);
             assertNotNull(facet);
             assertFalse(ExecutionPublishingFacet.isPublishingEnabled(facetedMethod));
             assertNoMethodsRemoved();
@@ -244,13 +242,13 @@ extends ActionAnnotationFacetFactoryTest {
         actionScenario(Customer.class, "someAction", (processMethodContext, facetHolder, facetedMethod)->{
 
             // given
-            facetedMethod.addFacet(new ActionSemanticsFacet("Test", SemanticsOf.IDEMPOTENT, facetedMethod));
+            new ActionSemanticsFacet("Test", SemanticsOf.IDEMPOTENT, facetedMethod);
 
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
 
             // then
-            final Facet facet = facetedMethod.getFacet(ExecutionPublishingFacet.class);
+            final Facet facet = facetedMethod.lookupFacet(ExecutionPublishingFacet.class).orElse(null);
             assertNotNull(facet);
             assertTrue(ExecutionPublishingFacet.isPublishingEnabled(facetedMethod));
             assertNoMethodsRemoved();
@@ -269,13 +267,13 @@ extends ActionAnnotationFacetFactoryTest {
         actionScenario(Customer.class, "someAction", (processMethodContext, facetHolder, facetedMethod)->{
 
             // given
-            facetedMethod.addFacet(new ActionSemanticsFacet("Test", SemanticsOf.IDEMPOTENT, facetedMethod));
+            new ActionSemanticsFacet("Test", SemanticsOf.IDEMPOTENT, facetedMethod);
 
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
 
             // then
-            final Facet facet = facetedMethod.getFacet(ExecutionPublishingFacet.class);
+            final Facet facet = facetedMethod.lookupFacet(ExecutionPublishingFacet.class).orElse(null);
             assertNotNull(facet);
             assertTrue(ExecutionPublishingFacet.isPublishingEnabled(facetedMethod));
             assertNoMethodsRemoved();
@@ -313,7 +311,7 @@ extends ActionAnnotationFacetFactoryTest {
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
             // then
-            final Facet facet = facetedMethod.getFacet(ExecutionPublishingFacet.class);
+            final Facet facet = facetedMethod.lookupFacet(ExecutionPublishingFacet.class).orElse(null);
             assertNotNull(facet);
             assertTrue(facet instanceof ExecutionPublishingFacetForActionAnnotation);
             assertNoMethodsRemoved();
@@ -334,7 +332,7 @@ extends ActionAnnotationFacetFactoryTest {
             // when
             processExecutionPublishing(facetFactory, processMethodContext);
             // then
-            final Facet facet = facetedMethod.getFacet(ExecutionPublishingFacet.class);
+            final Facet facet = facetedMethod.lookupFacet(ExecutionPublishingFacet.class).orElse(null);
             assertNotNull(facet);
             assertTrue(facet instanceof ExecutionPublishingFacetForActionAnnotation);
         });

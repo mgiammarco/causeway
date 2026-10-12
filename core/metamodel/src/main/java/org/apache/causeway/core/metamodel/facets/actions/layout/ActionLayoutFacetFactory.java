@@ -20,8 +20,6 @@ package org.apache.causeway.core.metamodel.facets.actions.layout;
 
 import java.util.Optional;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.applib.annotation.ActionLayout;
 import org.apache.causeway.applib.annotation.PromptStyle;
 import org.apache.causeway.core.config.CausewayConfiguration;
@@ -35,6 +33,8 @@ import org.apache.causeway.core.metamodel.facets.members.layout.order.LayoutOrde
 import org.apache.causeway.core.metamodel.facets.object.promptStyle.PromptStyleFacet;
 import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailureUtils;
 
+import jakarta.inject.Inject;
+
 public class ActionLayoutFacetFactory
 extends FacetFactoryAbstract {
 
@@ -46,58 +46,48 @@ extends FacetFactoryAbstract {
     @Override
     public void process(final ProcessMethodContext processMethodContext) {
 
-        var facetHolder = processMethodContext.getFacetHolder();
+        var facetHolder = processMethodContext.facetHolder();
         var actionLayoutIfAny = processMethodContext
                 .synthesizeOnMethodOrMixinType(
                         ActionLayout.class,
                         () -> ValidationFailureUtils
-                        .raiseAmbiguousMixinAnnotations(processMethodContext.getFacetHolder(), ActionLayout.class));
+                        .raiseAmbiguousMixinAnnotations(processMethodContext.facetHolder(), ActionLayout.class));
 
         // cssClass
-        addFacetIfPresent(
-                CssClassFacetForActionLayoutAnnotation
-                .create(actionLayoutIfAny, facetHolder));
+        CssClassFacetForActionLayoutAnnotation
+            .create(actionLayoutIfAny, facetHolder);
 
         // cssClassFa
-        addFacetIfPresent(
-                FaFacetForActionLayoutAnnotation
-                .create(actionLayoutIfAny, facetHolder));
+        FaFacetForActionLayoutAnnotation
+            .create(actionLayoutIfAny, facetHolder);
 
         // describedAs
-        addFacetIfPresent(
-                MemberDescribedFacetForActionLayoutAnnotation
-                .create(actionLayoutIfAny, facetHolder));
+        MemberDescribedFacetForActionLayoutAnnotation
+            .create(actionLayoutIfAny, facetHolder);
 
         // hidden
-        addFacetIfPresent(
-                HiddenFacetForActionLayoutAnnotation
-                .create(actionLayoutIfAny, facetHolder));
+        HiddenFacetForActionLayoutAnnotation
+            .create(actionLayoutIfAny, facetHolder);
 
         // layoutGroup (explicit via field set, or implicit via associated collection)
-        addFacetIfPresent(
-                LayoutGroupFacetFromActionLayoutAnnotation
-                .create(actionLayoutIfAny, facetHolder));
+        LayoutGroupFacetFromActionLayoutAnnotation
+            .create(actionLayoutIfAny, facetHolder);
 
         // named
-        addFacetIfPresent(
-                NamedFacetForActionLayoutAnnotation
-                .create(actionLayoutIfAny, facetHolder));
+        NamedFacetForActionLayoutAnnotation
+            .create(actionLayoutIfAny, facetHolder);
 
         // promptStyle
-        addFacetIfPresent(
-            createPromptStyleFacetForActionLayoutAnnotation(actionLayoutIfAny, getConfiguration(), facetHolder));
+        createPromptStyleFacetForActionLayoutAnnotation(actionLayoutIfAny, getConfiguration(), facetHolder);
 
         // position
-        var actionPositionFacet = ActionPositionFacetForActionLayoutAnnotation
+        ActionPositionFacetForActionLayoutAnnotation
                 .create(actionLayoutIfAny, facetHolder)
                 .orElseGet(()->new ActionPositionFacetFallback(facetHolder));
 
-        addFacet(actionPositionFacet);
-
         // sequence (layout)
-        addFacetIfPresent(
-                LayoutOrderFacetFromActionLayoutAnnotation
-                .create(actionLayoutIfAny, facetHolder));
+        LayoutOrderFacetFromActionLayoutAnnotation
+                .create(actionLayoutIfAny, facetHolder);
     }
 
     // -- HELPER

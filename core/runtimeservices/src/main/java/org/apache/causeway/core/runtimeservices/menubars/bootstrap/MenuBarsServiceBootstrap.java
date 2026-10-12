@@ -18,18 +18,15 @@
  */
 package org.apache.causeway.core.runtimeservices.menubars.bootstrap;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-
-import jakarta.annotation.Priority;
-import jakarta.inject.Inject;
-import jakarta.inject.Named;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
 
 import org.apache.causeway.applib.annotation.DomainServiceLayout;
 import org.apache.causeway.applib.annotation.PriorityPrecedence;
@@ -46,12 +43,8 @@ import org.apache.causeway.applib.services.message.MessageService;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.internal.base._Lazy;
 import org.apache.causeway.commons.internal.base._Strings;
-import org.apache.causeway.commons.internal.collections._Lists;
-import org.apache.causeway.commons.internal.collections._Maps;
-import org.apache.causeway.commons.internal.collections._Sets;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.facetapi.Facet.Precedence;
-import org.apache.causeway.core.metamodel.facetapi.FacetUtil;
 import org.apache.causeway.core.metamodel.facets.actions.layout.CssClassFacetForMenuBarXml;
 import org.apache.causeway.core.metamodel.facets.actions.layout.FaFacetForMenuBarXml;
 import org.apache.causeway.core.metamodel.facets.actions.layout.MemberDescribedFacetForMenuBarXml;
@@ -66,7 +59,12 @@ import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
 import org.apache.causeway.core.metamodel.spec.feature.MixedIn;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
 import org.apache.causeway.core.runtimeservices.CausewayModuleCoreRuntimeServices;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
+import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
@@ -128,10 +126,22 @@ implements MenuBarsService {
                 .map(attributesAppender::appendAttributes)
                 .orElse(menuBarsFromAnnotationsOnly);
 
-        var unreferencedActionsMenu = validateAndGetUnreferencedActionMenu(menuBars);
-        if (unreferencedActionsMenu == null)
-            // just use fallback
+        var unreferencedActionMenus = findUnreferencedActionMenus(menuBars);
+        if (unreferencedActionMenus.isEmpty()) {
+            // An authored layout may deliberately omit actions that it does not reference.
+            return menuBars;
+        }
+        if (unreferencedActionMenus.size() > 1) {
+            menuBars.setMetadataError(
+                    "At most one menu may have 'unreferencedActions' flag set; found "
+                            + unreferencedActionMenus.size() + " such menus");
+            if(metaModelContext.getSystemEnvironment().isPrototyping()) {
+                messageService.warnUser("Menubars metadata errors; check the error log");
+            }
+            log.error("Menubar layout metadata errors:\n\n{}\n\n", jaxbService.toXml(menuBars));
             return menuBarsFromAnnotationsOnly;
+        }
+        var unreferencedActionsMenu = unreferencedActionMenus.get(0);
 
         // add in any missing actions from the fallback
         var referencedActionsByObjectTypeAndId = menuBars.getAllServiceActionsByObjectTypeAndId();
@@ -164,43 +174,31 @@ implements MenuBarsService {
     }
 
     private BSMenuBars updateFacetsFromActionLayoutXml(final BSMenuBars menuBarsFromXml) {
-        final Map<String, ServiceActionLayoutData> serviceActionLayoutDataByActionId = _Maps.newHashMap();
+        final Map<String, ServiceActionLayoutData> serviceActionLayoutDataByActionId = new HashMap<>();
         menuBarsFromXml.visit(serviceActionLayoutData->
             serviceActionLayoutDataByActionId.put(
                     serviceActionLayoutData.getLogicalTypeNameAndId(),
                     serviceActionLayoutData));
 
         metaModelContext.streamServiceAdapters()
-        .filter(this::isVisibleAdapterForMenu)
-        .forEach(serviceAdapter->{
+	        .filter(this::isVisibleAdapterForMenu)
+	        .map(ManagedObject::objSpec)
+	        .flatMap(serviceSpec->serviceSpec.streamAnyActions(MixedIn.INCLUDED))
+	        .forEach(serviceAction->{
+	                var serviceActionIdentifier = serviceAction.getFeatureIdentifier();
+	                var actionId = serviceActionIdentifier.logicalTypeName()
+	                        + "#" + serviceActionIdentifier.memberLogicalName();
+	                var layoutData = serviceActionLayoutDataByActionId.get(actionId);
 
-            var serviceSpec = serviceAdapter.objSpec();
-
-            serviceSpec.streamAnyActions(MixedIn.INCLUDED)
-            .forEach(objectAction->{
-
-                var serviceActionIdentifier = objectAction.getFeatureIdentifier();
-
-                var actionId = serviceActionIdentifier.logicalTypeName()
-                        + "#" + serviceActionIdentifier.memberLogicalName();
-
-                var layoutData = serviceActionLayoutDataByActionId.get(actionId);
-
-                FacetUtil.updateFacetIfPresent(
-                        MemberNamedFacetForMenuBarXml.create(layoutData, objectAction));
-
-                FacetUtil.updateFacetIfPresent(
-                        MemberDescribedFacetForMenuBarXml.create(layoutData, objectAction));
-
-                FacetUtil.updateFacetIfPresent(
-                        CssClassFacetForMenuBarXml.create(layoutData, objectAction));
-
-                FacetUtil.updateFacetIfPresent(
-                        FaFacetForMenuBarXml.create(layoutData, objectAction));
-
-            });
-
-        });
+	                MemberNamedFacetForMenuBarXml
+	                	.create(layoutData, serviceAction);
+	                MemberDescribedFacetForMenuBarXml
+	                	.create(layoutData, serviceAction);
+	                CssClassFacetForMenuBarXml
+	                	.create(layoutData, serviceAction);
+	                FaFacetForMenuBarXml
+	                	.create(layoutData, serviceAction);
+	        });
 
         return menuBarsFromXml;
     }
@@ -220,30 +218,14 @@ implements MenuBarsService {
         section.getServiceActions().add(serviceAction);
     }
 
-    private BSMenu validateAndGetUnreferencedActionMenu(final BSMenuBars menuBars) {
-
-        if (menuBars == null)
-            return null;
-
-        var menusWithUnreferencedActionsFlagSet = _Lists.<BSMenu>newArrayList();
+    private static List<BSMenu> findUnreferencedActionMenus(final BSMenuBars menuBars) {
+        var menus = new ArrayList<BSMenu>();
         menuBars.visit(BSMenuBars.VisitorAdapter.visitingMenus(menu->{
             if(Boolean.TRUE.equals(menu.isUnreferencedActions())) {
-                menusWithUnreferencedActionsFlagSet.add(menu);
+                menus.add(menu);
             }
         }));
-
-        var size = menusWithUnreferencedActionsFlagSet.size();
-        if (size == 1)
-            return menusWithUnreferencedActionsFlagSet.get(0);
-
-        menuBars.setMetadataError(
-                "Exactly one menu must have 'unreferencedActions' flag set; found " + size + " such menus");
-        if(metaModelContext.getSystemEnvironment().isPrototyping()) {
-            messageService.warnUser("Menubars metadata errors; check the error log");
-        }
-        log.error("Menubar layout metadata errors:\n\n{}\n\n", jaxbService.toXml(menuBars));
-
-        return null;
+        return menus;
     }
 
     private BSMenuBars menuBarsFromAnnotationsOnly() {
@@ -281,7 +263,7 @@ implements MenuBarsService {
             final BSMenuBar menuBar,
             final DomainServiceLayout.MenuBar menuBarPos) {
 
-        var serviceActions = _Lists.<ServiceAndAction>newArrayList();
+        var serviceActions = new ArrayList<ServiceAndAction>();
 
         // cf ServiceActionsModel & ServiceActionUtil#buildMenu in Wicket viewer
         serviceAdapters.stream()
@@ -307,7 +289,7 @@ implements MenuBarsService {
             final Set<String> serviceNamesInOrder,
             final Map<String, List<ServiceAndAction>> serviceActionsByName) {
 
-        final List<BSMenu> menus = _Lists.newArrayList();
+        final List<BSMenu> menus = new ArrayList<>();
         for (String serviceName : serviceNamesInOrder) {
 
             BSMenu menu = new BSMenu(serviceName);
@@ -328,7 +310,7 @@ implements MenuBarsService {
                 var actionLayoutData = new ServiceActionLayoutData(logicalTypeName, objectAction.getId());
 
                 var named = objectAction
-                    .getFacetRanking(MemberNamedFacet.class)
+                    .lookupFacetRanking(MemberNamedFacet.class)
                     // assuming layout from annotations never installs higher than Precedence.DEFAULT
                     .flatMap(facetRanking->facetRanking.getWinnerNonEventLowerOrEqualTo(MemberNamedFacet.class, Precedence.DEFAULT))
                     .map(MemberNamedFacet::getSpecialization)
@@ -356,7 +338,7 @@ implements MenuBarsService {
     private static Set<String> serviceNamesInOrder(
             final Can<ManagedObject> serviceAdapters,
             final List<ServiceAndAction> serviceActions) {
-        final Set<String> serviceNameOrder = _Sets.newLinkedHashSet();
+        final Set<String> serviceNameOrder = new LinkedHashSet<>();
 
         // first, order as defined in causeway.properties
         for (ManagedObject serviceAdapter : serviceAdapters) {
@@ -381,7 +363,7 @@ implements MenuBarsService {
      */
     private static Map<String, List<ServiceAndAction>> groupByServiceName(
             final List<ServiceAndAction> serviceActions) {
-        var serviceActionsByName = _Maps.<String, List<ServiceAndAction>>newTreeMap();
+        var serviceActionsByName = new TreeMap<String, List<ServiceAndAction>>();
 
         // map available services
         ManagedObject lastServiceAdapter = null;
@@ -393,7 +375,7 @@ implements MenuBarsService {
             var serviceAdapter = serviceAction.getServiceAdapter();
 
             if(serviceActionsForName == null) {
-                serviceActionsForName = _Lists.newArrayList();
+                serviceActionsForName = new ArrayList<>();
                 serviceActionsByName.put(serviceAction.getServiceName(), serviceActionsForName);
             } else {
                 // capture whether this action is from a different service; if so, add a separator before it
@@ -415,7 +397,7 @@ implements MenuBarsService {
 
         return objectActions
                 .map(objectAction->{
-                    var layoutGroupFacet = objectAction.getFacet(LayoutGroupFacet.class);
+                    var layoutGroupFacet = objectAction.lookupFacet(LayoutGroupFacet.class).orElse(null);
                     String serviceName = layoutGroupFacet != null
                             ? layoutGroupFacet.getGroupId()
                             : null;
@@ -430,7 +412,7 @@ implements MenuBarsService {
     private static Predicate<ManagedObject> with(final DomainServiceLayout.MenuBar menuBar) {
         return (final ManagedObject input) -> {
             final DomainServiceLayoutFacet facet =
-                    input.objSpec().getFacet(DomainServiceLayoutFacet.class);
+                    input.objSpec().lookupFacet(DomainServiceLayoutFacet.class).orElse(null);
             return facet != null && facet.getMenuBar() == menuBar;
         };
     }

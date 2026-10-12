@@ -24,8 +24,8 @@ import org.apache.causeway.applib.annotation.Where;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.commons.CanonicalInvoker;
 import org.apache.causeway.core.metamodel.commons.ParameterConverters;
-import org.apache.causeway.core.metamodel.consent.Allow;
 import org.apache.causeway.core.metamodel.consent.Consent;
+import org.apache.causeway.core.metamodel.consent.Consent.Allow;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
 import org.apache.causeway.core.metamodel.facetapi.Facet.Precedence;
 import org.apache.causeway.core.metamodel.facetapi.FacetUtil;
@@ -58,7 +58,7 @@ permits CompositeValueUpdaterForProperty, CompositeValueUpdaterForParameter {
 
     // makes sure PromptStyle is always INLINE_AS_IF_EDIT
     default CompositeValueUpdater overrideFacets() {
-        FacetUtil.computeIfAbsentExact(mixedInAction().getFacetHolder(),
+        FacetUtil.computeIfAbsentExact(mixedInAction().facetHolder(),
             PromptStyleFacet.class,
             PromptStyleFacet.class,
             Precedence.HIGH,

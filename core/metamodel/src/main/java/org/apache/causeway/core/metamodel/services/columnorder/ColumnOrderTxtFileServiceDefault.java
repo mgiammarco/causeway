@@ -18,12 +18,6 @@
  */
 package org.apache.causeway.core.metamodel.services.columnorder;
 
-import jakarta.annotation.Priority;
-import jakarta.inject.Named;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
-
 import org.apache.causeway.applib.annotation.PriorityPrecedence;
 import org.apache.causeway.applib.annotation.Programmatic;
 import org.apache.causeway.applib.annotation.Where;
@@ -36,6 +30,11 @@ import org.apache.causeway.core.metamodel.spec.feature.ObjectAssociation;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectFeature;
 import org.apache.causeway.core.metamodel.spec.feature.OneToManyAssociation;
 import org.apache.causeway.core.metamodel.specloader.SpecificationLoader;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import jakarta.annotation.Priority;
+import jakarta.inject.Named;
 
 /**
  * Default implementation of {@link ColumnOrderTxtFileService}.
@@ -71,7 +70,7 @@ public record ColumnOrderTxtFileServiceDefault(
                 .forEach(assocId -> buf.append(assocId).append("\n"));
 
         var fileContents = buf.toString();
-        var fileName = "%s.columnOrder.txt".formatted(objSpec.getShortIdentifier());
+        var fileName = "%s.columnOrder.txt".formatted(objSpec.shortIdentifier());
 
         zipBuilder.addAsUtf8(fileName, fileContents);
     }
@@ -96,7 +95,7 @@ public record ColumnOrderTxtFileServiceDefault(
             .map(ObjectFeature::getId)
             .forEach(assocId -> buf.append(assocId).append("\n"));
 
-        var fileName = "%s#%s.columnOrder.txt".formatted(parentSpec.getShortIdentifier(), collection.getId());
+        var fileName = "%s#%s.columnOrder.txt".formatted(parentSpec.shortIdentifier(), collection.getId());
         var fileContents = buf.toString();
 
         zipBuilder.addAsUtf8(fileName, fileContents);

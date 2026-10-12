@@ -18,10 +18,12 @@
  */
 package org.apache.causeway.core.config.environment;
 
-import jakarta.annotation.PreDestroy;
-import jakarta.annotation.Priority;
-import jakarta.inject.Named;
-
+import org.apache.causeway.commons.internal.base._StableValue;
+import org.apache.causeway.commons.internal.base._Strings;
+import org.apache.causeway.commons.internal.context._Context;
+import org.apache.causeway.commons.internal.ioc.SpringContextHolder;
+import org.apache.causeway.core.config.CausewayModuleCoreConfig;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationFailedEvent;
@@ -29,14 +31,12 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
-import org.apache.causeway.commons.internal.base._StableValue;
-import org.apache.causeway.commons.internal.base._Strings;
-import org.apache.causeway.commons.internal.context._Context;
-import org.apache.causeway.commons.internal.ioc.SpringContextHolder;
-import org.apache.causeway.core.config.CausewayModuleCoreConfig;
-
+import jakarta.annotation.PreDestroy;
+import jakarta.annotation.Priority;
+import jakarta.inject.Named;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
@@ -63,16 +63,16 @@ public class CausewaySystemEnvironment {
     private final DeploymentType deploymentType;
 
     @Autowired
-    public CausewaySystemEnvironment(ApplicationContext springContext) {
+    public CausewaySystemEnvironment(final ApplicationContext springContext) {
         this.springContextHolder = new SpringContextHolder(springContext);
-        this.deploymentType = deploymentTypeFromEnvironment();
-        log.info("init for %s (hashCode = {})", deploymentType, this.hashCode());
+        this.deploymentType = deploymentTypeFromSpringContextOrSystemEnvironment(springContext.getEnvironment());
+        log.info("init for {} (hashCode = {})", deploymentType, this.hashCode());
     }
 
-    //JUnit
-    public CausewaySystemEnvironment() {
+	//JUnit
+    public CausewaySystemEnvironment(final DeploymentType deploymentType) {
         this.springContextHolder = null;
-        this.deploymentType = deploymentTypeFromEnvironment();
+        this.deploymentType = deploymentType;
     }
 
     // -- LIFE-CYCLE
@@ -123,43 +123,37 @@ public class CausewaySystemEnvironment {
 
     // -- UTIL
 
-    public static DeploymentType deploymentTypeFromEnvironment() {
+    public static DeploymentType deploymentTypeFromSpringContextOrSystemEnvironment(final Environment environment) {
+
+    	// preferred for integration tests @SpringBootTest(properties = {"causeway.deploymentType=PROTOTYPING"})
+    	final @Nullable String deploymentTypeFromSpring = environment.getProperty("causeway.deploymentType");
+    	final @Nullable String deploymentTypeFromSystemProperties = getProperty("causeway.deploymentType");
+
         boolean anyVoteForPrototyping = false;
         boolean anyVoteForProduction = false;
 
         // system environment priming (lowest priority)
 
-        anyVoteForPrototyping|=
-                isSet(getEnv("PROTOTYPING"));
+        anyVoteForPrototyping|= isSet(getEnv("PROTOTYPING"));
 
         // system property priming (medium priority)
 
-        anyVoteForPrototyping|=
-                isSet(getProperty("PROTOTYPING"));
+        anyVoteForPrototyping|= isSet(getProperty("PROTOTYPING"));
 
-        anyVoteForPrototyping|=
-                "PROTOTYPING".equalsIgnoreCase(getProperty("causeway.deploymentType"));
+        anyVoteForPrototyping|= "PROTOTYPING".equalsIgnoreCase(deploymentTypeFromSystemProperties);
+        anyVoteForPrototyping|= "PROTOTYPING".equalsIgnoreCase(deploymentTypeFromSpring);
 
         // system property override (highest priority)
 
         anyVoteForProduction|= isNotSet(getProperty("PROTOTYPING"));
+        anyVoteForProduction|= "PRODUCTION".equalsIgnoreCase(deploymentTypeFromSystemProperties);
+        anyVoteForProduction|= "PRODUCTION".equalsIgnoreCase(deploymentTypeFromSpring);
 
-        anyVoteForProduction|=
-                "PRODUCTION".equalsIgnoreCase(getProperty("causeway.deploymentType"));
-
-        var isPrototyping = anyVoteForPrototyping && !anyVoteForProduction;
+        var isPrototyping = anyVoteForPrototyping
+        		&& !anyVoteForProduction;
         return isPrototyping
             ? DeploymentType.PROTOTYPING
             : DeploymentType.PRODUCTION;
-    }
-
-    /**
-     * To set the framework's deployment-type programmatically.<p>
-     * Must be set prior to configuration bootstrapping.
-     * @param isPrototyping
-     */
-    public static void setPrototyping(final boolean isPrototyping) {
-        System.setProperty("PROTOTYPING", ""+isPrototyping);
     }
 
     // -- HELPER
@@ -184,7 +178,7 @@ public class CausewaySystemEnvironment {
         return "false".equalsIgnoreCase(value);
     }
 
-    private _StableValue<Boolean> _isIntegrationTesting = new _StableValue<Boolean>();
+    private final _StableValue<Boolean> _isIntegrationTesting = new _StableValue<Boolean>();
     /**
      * Whether we find Spring's ContextCache on the class path.
      */

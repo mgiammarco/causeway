@@ -18,16 +18,15 @@
  */
 package org.apache.causeway.core.metamodel.facets.properties.mandatory.dflt;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
-import org.apache.causeway.core.metamodel.facetapi.FacetUtil;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facets.FacetFactory;
 import org.apache.causeway.core.metamodel.facets.FacetFactoryAbstract;
 import org.apache.causeway.core.metamodel.facets.objectvalue.mandatory.MandatoryFacet;
 import org.apache.causeway.core.metamodel.facets.objectvalue.mandatory.MandatoryFacetDefault;
 import org.apache.causeway.core.metamodel.progmodel.ProgrammingModel;
+
+import jakarta.inject.Inject;
 
 /**
  * Simply installs a {@link MandatoryFacetDefault} onto all properties and
@@ -50,9 +49,8 @@ extends FacetFactoryAbstract {
 
     @Override
     public void process(final ProcessMethodContext processMethodContext) {
-        FacetUtil.addFacet(
-                MandatoryFacetDefault
-                .required(processMethodContext.getFacetHolder()));
+        MandatoryFacetDefault
+            .required(processMethodContext.facetHolder());
     }
 
 }

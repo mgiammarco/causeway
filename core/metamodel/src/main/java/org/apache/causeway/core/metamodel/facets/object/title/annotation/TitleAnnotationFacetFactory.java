@@ -18,8 +18,6 @@
  */
 package org.apache.causeway.core.metamodel.facets.object.title.annotation;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.applib.annotation.Title;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
@@ -31,6 +29,8 @@ import org.apache.causeway.core.metamodel.facets.object.title.TitleFacet;
 import org.apache.causeway.core.metamodel.facets.object.title.methods.TitleFacetViaTitleMethod;
 import org.apache.causeway.core.metamodel.progmodel.ProgrammingModel;
 import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailure;
+
+import jakarta.inject.Inject;
 
 public class TitleAnnotationFacetFactory
 extends FacetFactoryAbstract
@@ -47,10 +47,10 @@ implements MetaModelRefiner {
      */
     @Override
     public void process(final ProcessClassContext processClassContext) {
-        var cls = processClassContext.getCls();
-        var facetHolder = processClassContext.getFacetHolder();
+        var cls = processClassContext.cls();
+        var facetHolder = processClassContext.facetHolder();
 
-        addFacetIfPresent(TitleFacetViaTitleAnnotation.create(cls, facetHolder));
+        TitleFacetViaTitleAnnotation.create(cls, facetHolder);
     }
 
     /**
@@ -70,7 +70,7 @@ implements MetaModelRefiner {
 
             var titleFacetTopRank =
                 objectSpec
-                .getFacetRanking(TitleFacet.class)
+                .lookupFacetRanking(TitleFacet.class)
                 .map(facetRanking->facetRanking.getTopRank(TitleFacet.class))
                 .orElse(Can.empty())
                 .distinct(TitleFacet::semanticEquals);

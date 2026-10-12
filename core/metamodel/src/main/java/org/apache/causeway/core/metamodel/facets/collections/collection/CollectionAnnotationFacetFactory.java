@@ -20,15 +20,13 @@ package org.apache.causeway.core.metamodel.facets.collections.collection;
 
 import java.util.Optional;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.applib.annotation.Collection;
 import org.apache.causeway.applib.annotation.SemanticsOf;
 import org.apache.causeway.commons.semantics.CollectionSemantics;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facets.FacetFactoryAbstract;
-import org.apache.causeway.core.metamodel.facets.FacetedMethod;
 import org.apache.causeway.core.metamodel.facets.actcoll.typeof.TypeOfFacet;
 import org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacetAbstract;
 import org.apache.causeway.core.metamodel.facets.actions.semantics.ActionSemanticsFacet;
@@ -36,6 +34,8 @@ import org.apache.causeway.core.metamodel.facets.collections.collection.modify.C
 import org.apache.causeway.core.metamodel.facets.collections.collection.typeof.TypeOfFacetForCollectionAnnotation;
 import org.apache.causeway.core.metamodel.facets.propcoll.accessor.PropertyOrCollectionAccessorFacet;
 import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailureUtils;
+
+import jakarta.inject.Inject;
 
 public class CollectionAnnotationFacetFactory
 extends FacetFactoryAbstract {
@@ -49,22 +49,22 @@ extends FacetFactoryAbstract {
     public void process(final ProcessMethodContext processMethodContext) {
         var collectionIfAny = collectionIfAny(processMethodContext);
 
-        if(processMethodContext.getFeatureType().isProperty()) {
+        if(processMethodContext.featureType().isProperty()) {
             if(collectionIfAny.isPresent()) {
                 // Collection annotation is not allowed on property feature
                 ValidationFailureUtils
-                    .raiseMemberInvalidAnnotation(processMethodContext.getFacetHolder(), Collection.class);
+                    .raiseMemberInvalidAnnotation(processMethodContext.facetHolder(), Collection.class);
             }
             return; // skip further processing, since this is a property feature
         }
 
         if(collectionIfAny.isPresent()) {
             if(processMethodContext.isMixinMain()) {
-                inferMixinSort(processMethodContext.getFacetHolder());
-            } else if(processMethodContext.getFeatureType().isAction()) {
+                inferMixinSort(processMethodContext.facetHolder());
+            } else if(processMethodContext.featureType().isAction()) {
                 // Collection annotation is not allowed on action feature (unless mixin main)
                 ValidationFailureUtils
-                    .raiseMemberInvalidAnnotation(processMethodContext.getFacetHolder(), Collection.class);
+                    .raiseMemberInvalidAnnotation(processMethodContext.facetHolder(), Collection.class);
             }
         }
 
@@ -77,20 +77,19 @@ extends FacetFactoryAbstract {
             .synthesizeOnMethodOrMixinType(
                     Collection.class,
                     () -> ValidationFailureUtils
-                    .raiseAmbiguousMixinAnnotations(processMethodContext.getFacetHolder(), Collection.class));
+                    .raiseAmbiguousMixinAnnotations(processMethodContext.facetHolder(), Collection.class));
     }
 
     void inferMixinSort(final FacetedMethod facetedMethod) {
         /* if @Collection detected on method or type level infer:
          * @Action(semantics=SAFE) */
-        addFacet(new ActionSemanticsFacet("InferSafeForMixedInCollection", SemanticsOf.SAFE, facetedMethod));
-        addFacet(ContributingFacetAbstract.createAsCollection(facetedMethod));
+        new ActionSemanticsFacet("InferSafeForMixedInCollection", SemanticsOf.SAFE, facetedMethod);
+        ContributingFacetAbstract.createAsCollection(facetedMethod);
     }
 
     void processDomainEvent(final ProcessMethodContext processMethodContext, final Optional<Collection> collectionIfAny) {
 
-        var cls = processMethodContext.getCls();
-        var holder = processMethodContext.getFacetHolder();
+        var holder = processMethodContext.facetHolder();
 
         var getterFacetIfAny = holder.lookupFacet(PropertyOrCollectionAccessorFacet.class);
 
@@ -105,30 +104,26 @@ extends FacetFactoryAbstract {
         //
 
         // search for @Collection(domainEvent=...)
-        addFacet(
-            CollectionDomainEventFacet
-                .create(collectionIfAny, cls, holder));
+        CollectionDomainEventFacet
+            .create(collectionIfAny, processMethodContext);
     }
 
     void processTypeOf(final ProcessMethodContext processMethodContext, final Optional<Collection> collectionIfAny) {
 
-        var facetHolder = processMethodContext.getFacetHolder();
-        var method = processMethodContext.getMethod();
+        var facetHolder = processMethodContext.facetHolder();
+        var method = processMethodContext.methodFacade();
 
         var methodReturnType = method.getReturnType();
         CollectionSemantics.valueOf(methodReturnType)
-        .ifPresent(collectionType->{
-            addFacetIfPresent(
-                    // check for @Collection(typeOf=...)
-                    TypeOfFacetForCollectionAnnotation
-                    .create(collectionIfAny, collectionType, facetHolder)
-                    .or(
-                        // else infer from return type
-                        ()-> TypeOfFacet.inferFromMethodReturnType(
-                                method,
-                                facetHolder))
-                );
-
+        	.ifPresent(collectionType->{
+                // check for @Collection(typeOf=...)
+                TypeOfFacetForCollectionAnnotation
+                .create(collectionIfAny, collectionType, facetHolder)
+                .or(
+                    // else infer from return type
+                    ()-> TypeOfFacet.inferFromMethodReturnType(
+                            method,
+                            facetHolder));
         });
     }
 

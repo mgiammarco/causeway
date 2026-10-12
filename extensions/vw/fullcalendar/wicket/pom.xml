@@ -30,10 +30,10 @@
     <name>Apache Causeway Ext - FullCalendar Wicket</name>
 
     <packaging>pom</packaging>
-    
+
     <modules>
     	<module>integration</module>
     	<module>ui</module>
     </modules>
-    
+
 </project>

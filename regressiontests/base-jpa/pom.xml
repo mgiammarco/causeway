@@ -54,18 +54,18 @@
             <groupId>org.apache.causeway.persistence</groupId>
             <artifactId>causeway-persistence-jpa-eclipselink</artifactId>
         </dependency>
-        
+
         <dependency>
             <groupId>org.apache.causeway.testing</groupId>
             <artifactId>causeway-testing-fixtures-applib</artifactId>
             <optional>true</optional>
         </dependency>
-        
+
         <dependency>
             <groupId>org.apache.causeway.viewer</groupId>
             <artifactId>causeway-viewer-restfulobjects-applib</artifactId>
         </dependency>
-        
+
         <dependency>
             <groupId>org.apache.causeway.mavendeps</groupId>
             <artifactId>causeway-mavendeps-webapp</artifactId>
@@ -79,5 +79,5 @@
         </dependency>
 
 	</dependencies>
-	
+
 </project>

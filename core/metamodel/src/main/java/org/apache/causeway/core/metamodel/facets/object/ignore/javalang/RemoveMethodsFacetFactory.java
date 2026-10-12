@@ -18,8 +18,6 @@
  */
 package org.apache.causeway.core.metamodel.facets.object.ignore.javalang;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.applib.annotation.Action;
 import org.apache.causeway.commons.internal._Constants;
 import org.apache.causeway.commons.internal.reflection._Annotations;
@@ -29,6 +27,8 @@ import org.apache.causeway.core.metamodel.facetapi.Facet;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facets.FacetFactoryAbstract;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
+
+import jakarta.inject.Inject;
 
 /**
  * Designed to simply filter out any synthetic methods.
@@ -50,13 +50,13 @@ public class RemoveMethodsFacetFactory extends FacetFactoryAbstract {
     public void process(final ProcessClassContext processClassContext) {
         super.process(processClassContext);
 
-        var cls = processClassContext.getCls();
-        var facetHolder = processClassContext.getFacetHolder();
-        var isConcreteMixin = facetHolder instanceof ObjectSpecification
-                ? ((ObjectSpecification)facetHolder).getBeanSort().isMixin()
+        var cls = processClassContext.cls();
+        var facetHolder = processClassContext.facetHolder();
+        var isConcreteMixin = facetHolder instanceof ObjectSpecification o
+                ? o.beanSort().isMixin()
                 : false;
 
-        var isActionAnnotationRequired = processClassContext.getIntrospectionPolicy()
+        var isActionAnnotationRequired = processClassContext.introspectionPolicy()
                 .getMemberAnnotationPolicy().isMemberAnnotationsRequired();
 
         getClassCache()
@@ -90,7 +90,7 @@ public class RemoveMethodsFacetFactory extends FacetFactoryAbstract {
                 }
             });
 
-        removeSuperclassMethods(processClassContext.getCls(), processClassContext);
+        removeSuperclassMethods(processClassContext.cls(), processClassContext);
 
         // no need to remove java.lang.Object methods, as this is already taken care of by the ClassCache (tested)
 
@@ -99,9 +99,8 @@ public class RemoveMethodsFacetFactory extends FacetFactoryAbstract {
     }
 
     private void removeSuperclassMethods(final Class<?> type, final ProcessClassContext processClassContext) {
-        if (type == null) {
-            return;
-        }
+        if (type == null)
+			return;
 
         if (!_Reflect.isJavaApiClass(type)) {
             removeSuperclassMethods(type.getSuperclass(), processClassContext);

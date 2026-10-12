@@ -43,7 +43,7 @@
             <groupId>org.apache.causeway.core</groupId>
             <artifactId>causeway-core-metamodel</artifactId>
         </dependency>
-        
+
         <dependency>
             <groupId>org.apache.causeway.core</groupId>
             <artifactId>causeway-core-transaction</artifactId>

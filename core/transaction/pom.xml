@@ -29,7 +29,7 @@
     <artifactId>causeway-core-transaction</artifactId>
     <name>Apache Causeway Core - Transaction</name>
     <description>
-    	Provides transaction integration with Spring and also 
+    	Provides transaction integration with Spring and also
     	entity change tracking, with associated publishing and pre/post value events.
     </description>
 

@@ -18,10 +18,10 @@
  */
 package org.apache.causeway.core.metamodel.facets.collections.layout;
 
+import static org.apache.causeway.commons.internal.base._Casts.uncheckedCast;
+
 import java.util.Comparator;
 import java.util.Optional;
-
-import org.jspecify.annotations.Nullable;
 
 import org.apache.causeway.applib.layout.component.CollectionLayoutData;
 import org.apache.causeway.core.metamodel.commons.ClassUtil;
@@ -29,11 +29,7 @@ import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
 import org.apache.causeway.core.metamodel.facetapi.QualifiedFacet;
 import org.apache.causeway.core.metamodel.facets.collections.sortedby.SortedByFacet;
 import org.apache.causeway.core.metamodel.facets.collections.sortedby.SortedByFacetAbstract;
-
-import static org.apache.causeway.commons.internal.base._Casts.uncheckedCast;
-
-import lombok.Getter;
-import lombok.experimental.Accessors;
+import org.jspecify.annotations.Nullable;
 
 public class SortedByFacetForCollectionLayoutXml
 extends SortedByFacetAbstract
@@ -54,20 +50,17 @@ implements QualifiedFacet {
             return Optional.empty();
 
         return sortedByClass != null
-            ? Optional.of(new SortedByFacetForCollectionLayoutXml(uncheckedCast(sortedByClass), holder, precedence, qualifier))
+            ? Optional.of(new SortedByFacetForCollectionLayoutXml(uncheckedCast(sortedByClass), holder) {
+            	@Override final public Precedence precedence() { return precedence; }
+            	@Override final public @Nullable String qualifier() { return qualifier; }
+            })
             : Optional.empty();
     }
 
-    @Getter(onMethod_ = @Override) @Accessors(fluent = true, makeFinal = true)
-    private final @Nullable String qualifier;
-
     private SortedByFacetForCollectionLayoutXml(
             final Class<? extends Comparator<?>> sortedBy,
-            final FacetHolder holder,
-            final Precedence precedence,
-            final @Nullable String qualifier) {
-        super(sortedBy, holder, precedence);
-        this.qualifier = qualifier;
+            final FacetHolder holder) {
+        super(sortedBy, holder);
     }
 
     @Override

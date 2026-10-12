@@ -18,7 +18,7 @@
  */
 package org.apache.causeway.core.metamodel.spec.impl;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -28,12 +28,9 @@ import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.jspecify.annotations.NonNull;
-
 import org.apache.causeway.applib.Identifier;
 import org.apache.causeway.applib.annotation.Domain;
 import org.apache.causeway.commons.collections.Can;
-import org.apache.causeway.commons.internal.collections._Lists;
 import org.apache.causeway.commons.internal.functions._Predicates;
 import org.apache.causeway.commons.internal.reflection._Annotations;
 import org.apache.causeway.commons.internal.reflection._ClassCache;
@@ -48,13 +45,14 @@ import org.apache.causeway.core.config.progmodel.ProgrammingModelConstants.Objec
 import org.apache.causeway.core.metamodel.commons.MethodUtil;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
-import org.apache.causeway.core.metamodel.facets.FacetedMethod;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
 import org.apache.causeway.core.metamodel.facets.HasFacetedMethod;
 import org.apache.causeway.core.metamodel.facets.ImperativeFacet;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
 import org.apache.causeway.core.metamodel.spec.feature.MixedIn;
 import org.apache.causeway.core.metamodel.specloader.validator.MetaModelValidatorAbstract;
 import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailure;
+import org.jspecify.annotations.NonNull;
 
 /**
  * @since 2.0
@@ -66,9 +64,9 @@ extends MetaModelValidatorAbstract {
     private final _ClassCache classCache;
 
     ValidatorDomainIncludeAnnotationEnforcesMetamodelContribution(final MetaModelContext mmc) {
-        super(mmc, spec->((spec instanceof ObjectSpecificationDefault)
+        super(mmc, spec->((spec instanceof ObjectSpecificationInternal)
             && !spec.isAbstract()
-            && !spec.getBeanSort().isManagedBeanNotContributing()
+            && !spec.beanSort().isManagedBeanNotContributing()
             && !spec.isValue()));
         this.classCache = _ClassCache.getInstance();
     }
@@ -76,7 +74,8 @@ extends MetaModelValidatorAbstract {
     @Override
     public void validateObjectEnter(final ObjectSpecification spec) {
 
-        final Class<?> type = spec.getCorrespondingClass();
+        final Class<?> type = spec.correspondingClass();
+        final var internalSpec = (ObjectSpecificationInternal) spec;
 
         // methods picked up by the framework
         var memberMethods = new TreeSet<>(ResolvedMethod::methodCompare);
@@ -121,7 +120,7 @@ extends MetaModelValidatorAbstract {
             .filter(Predicate.not(memberMethods::contains))
             .filter(Predicate.not(supportMethods::contains))
             // filter away classic getters, that shadow record components
-            .filter(spec.getCorrespondingClass().isRecord()
+            .filter(spec.correspondingClass().isRecord()
                 ? Predicate.not(AccessorSemantics::isGetter)
                 : _Predicates.alwaysTrue())
             .collect(Collectors.toCollection(HashSet::new));
@@ -130,7 +129,7 @@ extends MetaModelValidatorAbstract {
         methodsIntendedToBeIncludedButNotPickedUp.stream()
             .forEach(notPickedUpMethod->{
                 var unmetConstraints =
-                    unmetConstraints((ObjectSpecificationDefault) spec, notPickedUpMethod)
+                    unmetConstraints(internalSpec, notPickedUpMethod)
                         .stream()
                         .collect(Collectors.joining("; "));
 
@@ -144,19 +143,19 @@ extends MetaModelValidatorAbstract {
             });
 
         validateOrphanedSupportingMethod(
-                spec, supportMethods, memberMethods, methodsIntendedToBeIncludedButNotPickedUp);
+        		internalSpec, supportMethods, memberMethods, methodsIntendedToBeIncludedButNotPickedUp, internalSpec.consistencyContext().potentialOrphans());
     }
 
     // -- HELPER - VALIDATION LOGIC
 
     private List<String> unmetConstraints(
-            final ObjectSpecificationDefault spec,
+            final ObjectSpecificationInternal spec,
             final ResolvedMethod method) {
 
         //var type = spec.getCorrespondingClass();
-        var unmetContraints = _Lists.<String>newArrayList();
+        var unmetContraints = new ArrayList<String>();
 
-        if(!spec.getIntrospectionPolicy().getEncapsulationPolicy().isEncapsulatedMembersSupported()
+        if(!spec.introspectionPolicy().getEncapsulationPolicy().isEncapsulatedMembersSupported()
                 && !MethodUtil.isPublic(method)) {
             unmetContraints.add("method must be 'public'");
             return unmetContraints; // don't check any further
@@ -185,20 +184,19 @@ extends MetaModelValidatorAbstract {
             final @NonNull ObjectSpecification spec,
             final @NonNull Set<ResolvedMethod> supportMethods,
             final @NonNull Set<ResolvedMethod> memberMethods,
-            final @NonNull Set<ResolvedMethod> alreadyReported) {
+            final @NonNull Set<ResolvedMethod> alreadyReported,
+            final @NonNull Set<ResolvedMethod> potentialOrphans) {
+
+    	if(potentialOrphans.isEmpty())
+    		return; // nothing to do
 
         if(spec.isAbstract()
-                || spec.getBeanSort().isManagedBeanNotContributing()
+                || spec.beanSort().isManagedBeanNotContributing()
                 || spec.isValue()
-                || spec.getIntrospectionPolicy()
+                || spec.introspectionPolicy()
                     .getSupportMethodAnnotationPolicy()
                     .isSupportMethodAnnotationsRequired())
             return; // ignore
-
-        var potentialOrphans = spec instanceof ObjectSpecificationDefault specDefault
-            ? specDefault.getPotentialOrphans()
-            : Collections.<ResolvedMethod>emptySet();
-        if(potentialOrphans.isEmpty()) return; // nothing to do
 
         // find reasons why these are not recognized
         potentialOrphans.stream()
@@ -218,16 +216,16 @@ extends MetaModelValidatorAbstract {
                             .addVariablesFor(methodIdentifier)
                             .buildMessage());
             });
-
-        potentialOrphans.clear(); // no longer needed
     }
 
     private static boolean matchesSupportMethodNamingConvention(final String methodName) {
         for(var objectSupportMethod : ObjectSupportMethod.values()) {
-            if(objectSupportMethod.getMethodNames().anyMatch(name->name.equals(methodName))) return true;
+            if(objectSupportMethod.getMethodNames().anyMatch(name->name.equals(methodName)))
+            	return true;
         }
         for(var memberSupportPrefix : MemberSupportPrefix.values()) {
-            if(memberSupportPrefix.getMethodNamePrefixes().anyMatch(prefix->methodName.startsWith(prefix))) return true;
+            if(memberSupportPrefix.getMethodNamePrefixes().anyMatch(methodName::startsWith))
+            	return true;
         }
         return false;
     }

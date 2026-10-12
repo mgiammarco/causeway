@@ -20,8 +20,6 @@ package org.apache.causeway.core.metamodel.facets.object.domainobjectlayout.tabl
 
 import java.util.Optional;
 
-import org.jspecify.annotations.Nullable;
-
 import org.apache.causeway.applib.annotation.TableDecorator;
 import org.apache.causeway.applib.layout.component.DomainObjectLayoutData;
 import org.apache.causeway.core.metamodel.facetapi.Facet;
@@ -29,9 +27,7 @@ import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
 import org.apache.causeway.core.metamodel.facetapi.QualifiedFacet;
 import org.apache.causeway.core.metamodel.facets.object.tabledec.TableDecoratorFacet;
 import org.apache.causeway.core.metamodel.facets.object.tabledec.TableDecoratorFacetAbstract;
-
-import lombok.Getter;
-import lombok.experimental.Accessors;
+import org.jspecify.annotations.Nullable;
 
 public class TableDecoratorFacetForDomainObjectLayoutXml
 extends TableDecoratorFacetAbstract
@@ -45,19 +41,16 @@ implements QualifiedFacet {
         return Optional.ofNullable(domainObjectLayout)
             .map(DomainObjectLayoutData::getTableDecorator)
             .map(tableDecorator->
-                new TableDecoratorFacetForDomainObjectLayoutXml(tableDecorator, holder, precedence, qualifier));
+                new TableDecoratorFacetForDomainObjectLayoutXml(tableDecorator, holder) {
+                	@Override final public Precedence precedence() { return precedence; }
+                	@Override final public @Nullable String qualifier() { return qualifier; }
+                });
     }
-
-    @Getter(onMethod_ = @Override) @Accessors(fluent = true, makeFinal = true)
-    private final @Nullable String qualifier;
 
     private TableDecoratorFacetForDomainObjectLayoutXml(
             final Class<? extends TableDecorator> value,
-            final FacetHolder holder,
-            final Facet.Precedence precedence,
-            final @Nullable String qualifier) {
-        super(value, holder, precedence);
-        this.qualifier = qualifier;
+            final FacetHolder holder) {
+        super(value, holder);
     }
 
 }

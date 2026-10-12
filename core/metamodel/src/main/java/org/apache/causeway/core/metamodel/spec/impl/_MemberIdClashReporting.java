@@ -19,11 +19,12 @@
 package org.apache.causeway.core.metamodel.spec.impl;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import org.apache.causeway.commons.internal.exceptions._Exceptions;
-import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
+import org.apache.causeway.core.config.beans.CausewayBeanMetaData;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectMember;
 import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailureUtils;
 
@@ -49,11 +50,12 @@ class _MemberIdClashReporting {
      * which in its own right helps with handling of method overriding (Java language terminology).
      */
     void flagAnyMemberIdClashes(
-            final ObjectSpecification declaringType,
+    		final CausewayBeanMetaData declaringType,
             final Iterable<? extends ObjectMember> regularMembers,
-            final Iterable<? extends ObjectMember> mixedInMembers) {
+            final List<? extends ObjectMember> mixedInMembers) {
 
-        if(declaringType.isAbstract()) return; // skip abstract types
+    	if(mixedInMembers.isEmpty()) return; // nothing to check
+        if(declaringType.beanSort().isAbstract()) return; // skip abstract types
 
         var memberIdCollector = new MemberIdCollector();
 
@@ -74,11 +76,15 @@ class _MemberIdClashReporting {
         /** Optionally returns a member with the same member-id, based on whether previously collected. */
         public Optional<ObjectMember> collect(final ObjectMember objectMember) {
             if(objectMember.isAction()) {
-                if(actionIds==null) this.actionIds = new HashMap<>();
+                if(actionIds==null) {
+					this.actionIds = new HashMap<>();
+				}
                 return Optional.ofNullable(actionIds.put(objectMember.getId(), objectMember));
             }
             if(objectMember.isPropertyOrCollection()) {
-                if(associationIds==null) this.associationIds = new HashMap<>();
+                if(associationIds==null) {
+					this.associationIds = new HashMap<>();
+				}
                 return Optional.ofNullable(associationIds.put(objectMember.getId(), objectMember));
             }
             throw _Exceptions.unmatchedCase(String.format("framework bug: unmatched feature %s", objectMember));

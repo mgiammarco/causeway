@@ -16,22 +16,14 @@
  * under the License. */
 package org.apache.causeway.core.metamodel.facets.collections.collection;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-
-import org.hamcrest.Matchers;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
-import org.mockito.Mockito;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 import org.apache.causeway.applib.annotation.Collection;
 import org.apache.causeway.applib.annotation.DomainObject;
@@ -42,11 +34,10 @@ import org.apache.causeway.commons.semantics.CollectionSemantics;
 import org.apache.causeway.core.metamodel.commons.matchers.CausewayMatchers;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
-import org.apache.causeway.core.metamodel.facetapi.FacetUtil;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
 import org.apache.causeway.core.metamodel.facets.DomainEventFacetAbstract.EventTypeOrigin;
 import org.apache.causeway.core.metamodel.facets.FacetFactory;
 import org.apache.causeway.core.metamodel.facets.FacetFactoryTestAbstract;
-import org.apache.causeway.core.metamodel.facets.FacetedMethod;
 import org.apache.causeway.core.metamodel.facets.actcoll.typeof.TypeOfFacet;
 import org.apache.causeway.core.metamodel.facets.actcoll.typeof.TypeOfFacetFromFeature;
 import org.apache.causeway.core.metamodel.facets.collections.collection.modify.CollectionDomainEventFacet;
@@ -55,6 +46,13 @@ import org.apache.causeway.core.metamodel.facets.propcoll.accessor.PropertyOrCol
 import org.apache.causeway.core.metamodel.object.ManagedObject;
 import org.apache.causeway.core.metamodel.postprocessors.members.SynthesizeDomainEventsForMixinPostProcessor;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.mockito.Mockito;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -92,14 +90,14 @@ extends FacetFactoryTestAbstract {
 
         private void addGetterFacet(final FacetHolder holder) {
             var mockOnType = Mockito.mock(ObjectSpecification.class);
-            FacetUtil.addFacet(new PropertyOrCollectionAccessorFacetAbstract(mockOnType, holder) {
+            new PropertyOrCollectionAccessorFacetAbstract(mockOnType, holder) {
                 @Override
                 public Object getAssociationValueAsPojo(
                         final ManagedObject inObject,
                         final InteractionInitiatedBy interactionInitiatedBy) {
                     return null;
                 }
-            });
+            };
         }
 
         private void assertHasCollectionDomainEventFacet(
@@ -299,9 +297,14 @@ extends FacetFactoryTestAbstract {
                 processDomainEvent(facetFactory, processMethodContext);
                 postProcessor.postProcessCollection(mixeeSpec, mixedInColl);
 
-                // then
+                // then - the mixee's object-level default is installed as a per-mixee overlay on the mixed-in
+                // member, while the shared mixin faceted method is left at its default (no shared mutation).
+                var mixedInEvent = mixedInColl.lookupFacet(CollectionDomainEventFacet.class).orElseThrow();
+                assertEquals(EventTypeOrigin.ANNOTATED_OBJECT, mixedInEvent.getEventTypeOrigin());
+                assertThat(mixedInEvent.getEventType(),
+                        CausewayMatchers.classEqualTo(Customer.OrdersShowingDomainEvent.class));
                 assertHasCollectionDomainEventFacet(facetedMethod,
-                        EventTypeOrigin.ANNOTATED_OBJECT, Customer.OrdersShowingDomainEvent.class);
+                        EventTypeOrigin.DEFAULT, CollectionDomainEvent.Default.class);
             });
         }
 
@@ -394,7 +397,7 @@ extends FacetFactoryTestAbstract {
                 // when
                 processTypeOf(facetFactory, processMethodContext);
                 // then
-                final TypeOfFacet facet = facetedMethod.getFacet(TypeOfFacet.class);
+                final TypeOfFacet facet = facetedMethod.lookupFacet(TypeOfFacet.class).orElse(null);
                 assertNotNull(facet);
                 assertTrue(facet instanceof TypeOfFacetForCollectionAnnotation);
                 assertThat(facet.value().elementType(), CausewayMatchers.classEqualTo(Order.class));
@@ -418,7 +421,7 @@ extends FacetFactoryTestAbstract {
                 processTypeOf(facetFactory, processMethodContext);
 
                 // then
-                final TypeOfFacet facet = facetedMethod.getFacet(TypeOfFacet.class);
+                final TypeOfFacet facet = facetedMethod.lookupFacet(TypeOfFacet.class).orElse(null);
                 assertNotNull(facet);
                 assertTrue(facet instanceof TypeOfFacet);
                 assertThat(facet.value().elementType(), CausewayMatchers.classEqualTo(Order.class));
@@ -443,7 +446,7 @@ extends FacetFactoryTestAbstract {
                 processTypeOf(facetFactory, processMethodContext);
 
                 // then
-                final TypeOfFacet facet = facetedMethod.getFacet(TypeOfFacet.class);
+                final TypeOfFacet facet = facetedMethod.lookupFacet(TypeOfFacet.class).orElse(null);
                 assertNotNull(facet);
                 assertTrue(facet instanceof TypeOfFacetFromFeature);
                 assertThat(facet.value().elementType(), CausewayMatchers.classEqualTo(Order.class));

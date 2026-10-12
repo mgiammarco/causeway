@@ -21,6 +21,16 @@ application-features.init
 
 
 |
+[[causeway.core.runtime-services.command-executor-service.interaction-advisor-policy]]
+causeway.core.runtime-services. +
+command-executor-service. +
+interaction-advisor-policy
+
+|  NO_CHECK
+| null
+
+
+|
 [[causeway.core.runtime-services.email.override.bcc]]
 causeway.core.runtime-services. +
 email.override.bcc

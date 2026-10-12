@@ -33,10 +33,9 @@ public class PagedFacetForCollectionLayoutAnnotation extends PagedFacetAbstract 
             final Optional<CollectionLayout> collectionLayoutIfAny,
             final FacetHolder holder) {
 
-        var tableDecoratorFacet = holder.getFacet(TableDecoratorFacet.class);
-        if (TableDecorator.DatatablesNet.class.equals(tableDecoratorFacet.value())) {
-            return Optional.of(new PagedFacetOverriddenByDataTablesDecoration(holder));
-        }
+        var tableDecoratorFacet = holder.lookupFacet(TableDecoratorFacet.class).orElse(null);
+        if (TableDecorator.DatatablesNet.class.equals(tableDecoratorFacet.value()))
+			return Optional.of(new PagedFacetOverriddenByDataTablesDecoration(holder));
 
         return collectionLayoutIfAny
                 .map(CollectionLayout::paged)
@@ -45,7 +44,7 @@ public class PagedFacetForCollectionLayoutAnnotation extends PagedFacetAbstract 
     }
 
     private PagedFacetForCollectionLayoutAnnotation(final int paged, final FacetHolder holder) {
-        super(paged, holder, Precedence.DEFAULT);
+        super(paged, holder);
     }
 
 }

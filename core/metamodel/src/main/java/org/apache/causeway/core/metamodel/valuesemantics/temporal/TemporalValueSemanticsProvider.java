@@ -33,10 +33,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
-import jakarta.inject.Inject;
-
-import org.jspecify.annotations.Nullable;
-
 import org.apache.causeway.applib.annotation.TimePrecision;
 import org.apache.causeway.applib.annotation.TimeZoneTranslation;
 import org.apache.causeway.applib.exceptions.recoverable.TextEntryParseException;
@@ -53,9 +49,11 @@ import org.apache.causeway.core.metamodel.facets.objectvalue.temporalformat.Date
 import org.apache.causeway.core.metamodel.facets.objectvalue.temporalformat.TimeFormatPrecisionFacet;
 import org.apache.causeway.core.metamodel.facets.objectvalue.temporalformat.TimeFormatStyleFacet;
 import org.apache.causeway.core.metamodel.facets.objectvalue.temporalformat.TimeZoneTranslationFacet;
-
-import lombok.Getter;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
+import jakarta.inject.Inject;
+import lombok.Getter;
 import lombok.experimental.Accessors;
 
 /**
@@ -126,12 +124,11 @@ implements TemporalValueSemantics<T> {
                 ? Duration.ofDays(a.until(b, ChronoUnit.DAYS))
                 : Duration.between(a, b);
 
-        if(epsilon.minus(delta.abs()).isNegative()) {
+        if(epsilon.minus(delta.abs()).isNegative())
             // negative delta means a > b => should return +1
             return delta.isNegative()
                     ? 1
                     : -1;
-        }
         return 0;
     }
 
@@ -180,18 +177,16 @@ implements TemporalValueSemantics<T> {
     @Override
     public final T parseTextRepresentation(final ValueSemanticsProvider.Context context, final String text) {
         var temporalString = _Strings.blankToNullOrTrim(text);
-        if(temporalString==null) {
+        if(temporalString==null)
             return null;
-        }
 
-        T contextTemporal = null; //FIXME[CAUSEWAY-2882] not implemented yet
-        if(contextTemporal != null) {
-            var adjusted = TemporalAdjust
-                    .parseAdjustment(adjuster, contextTemporal, temporalString);
-            if(adjusted!=null) {
-                return adjusted;
-            }
-        }
+//        T contextTemporal = null; //FIXME[CAUSEWAY-2882] not implemented yet
+//        if(contextTemporal != null) {
+//            var adjusted = TemporalAdjust
+//                    .parseAdjustment(adjuster, contextTemporal, temporalString);
+//            if(adjusted!=null)
+//                return adjusted;
+//        }
 
         var format = getEditingInputFormat(context);
 
@@ -280,6 +275,43 @@ implements TemporalValueSemantics<T> {
         };
     }
 
+    // -- FORMAT
+
+    protected DateTimeFormatter getTemporalNoZoneRenderingFormat(
+            final @Nullable Context context,
+            final TemporalValueSemantics.@NonNull TemporalCharacteristic temporalCharacteristic,
+            final TemporalValueSemantics.@NonNull OffsetCharacteristic offsetCharacteristic,
+            final @NonNull FormatStyle dateFormatStyle,
+            final @NonNull FormatStyle timeFormatStyle,
+            final @Nullable String datePattern,
+            final @Nullable String dateTimePattern) {
+
+        final DateTimeFormatter noZoneOutputFormat = switch (temporalCharacteristic) {
+            case DATE_TIME -> dateTimePattern != null
+                                ? DateTimeFormatter.ofPattern(dateTimePattern)
+                                : DateTimeFormatter.ofLocalizedDateTime(dateFormatStyle, timeFormatStyle);
+            case DATE_ONLY -> datePattern != null
+                                ? DateTimeFormatter.ofPattern(datePattern)
+                                : DateTimeFormatter.ofLocalizedDate(dateFormatStyle);
+            case TIME_ONLY -> DateTimeFormatter.ofLocalizedTime(timeFormatStyle);
+        };
+
+        return noZoneOutputFormat
+                .withLocale(getUserLocale(context).timeFormatLocale());
+    }
+
+    protected Optional<DateTimeFormatter> getTemporalZoneOnlyRenderingFormat(
+            final ValueSemanticsProvider.@Nullable Context context,
+            final TemporalValueSemantics.@NonNull TemporalCharacteristic temporalCharacteristic,
+            final TemporalValueSemantics.@NonNull OffsetCharacteristic offsetCharacteristic) {
+
+        return switch (offsetCharacteristic) {
+            case LOCAL -> Optional.empty();
+            case OFFSET -> Optional.of(_Temporals.ISO_OFFSET_ONLY_FORMAT);
+            case ZONED -> Optional.of(_Temporals.DEFAULT_ZONEID_ONLY_FORMAT);
+        };
+    }
+
 //    /**
 //     * Converts given {@link Temporal} when offset,
 //     * to a temporal that is local to the user's (client's) time-zone.
@@ -310,18 +342,15 @@ implements TemporalValueSemantics<T> {
      * In other words, this conversion preserves the time {@link Instant}.
      */
     private Temporal translateToUserLocalTimeZone(final ValueSemanticsProvider.Context context, final Temporal t) {
-        if(t instanceof ZonedDateTime zonedDateTime) {
+        if(t instanceof ZonedDateTime zonedDateTime)
             return _Temporals.translateToTimeZone(zonedDateTime,
                     context.interactionContext().getTimeZone());
-        }
-        if(t instanceof OffsetDateTime offsetDateTime) {
+        if(t instanceof OffsetDateTime offsetDateTime)
             return _Temporals.translateToTimeZone(offsetDateTime,
                     context.interactionContext().getTimeZone());
-        }
-        if(t instanceof OffsetTime offsetTime) {
+        if(t instanceof OffsetTime offsetTime)
             return _Temporals.translateToTimeOffset(offsetTime,
                     context.interactionContext().getTimeZoneOffsetNow());
-        }
         return t; // otherwise acts as identity operator
     }
 

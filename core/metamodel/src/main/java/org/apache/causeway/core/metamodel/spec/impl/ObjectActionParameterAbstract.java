@@ -21,13 +21,15 @@ package org.apache.causeway.core.metamodel.spec.impl;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.NonNull;
+
 import org.apache.causeway.applib.Identifier;
 import org.apache.causeway.applib.exceptions.unrecoverable.DomainModelException;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.internal.exceptions._Exceptions;
 import org.apache.causeway.core.metamodel.commons.ClassExtensions;
-import org.apache.causeway.core.metamodel.consent.Allow;
 import org.apache.causeway.core.metamodel.consent.Consent;
+import org.apache.causeway.core.metamodel.consent.Consent.Allow;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
@@ -51,14 +53,14 @@ import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectActionParameter;
 
 import lombok.Getter;
-import org.jspecify.annotations.NonNull;
+import lombok.experimental.Accessors;
 
 abstract class ObjectActionParameterAbstract
 implements
-    ObjectActionParameter,
-    HasSpecificationLoaderInternal {
+    ObjectActionParameter {
 
-    @Getter(onMethod_ = {@Override}) private final FeatureType featureType;
+    @Getter(onMethod_ = {@Override}) @Accessors(fluent = true)
+    private final FeatureType featureType;
     @Getter(onMethod_ = {@Override}) private final int parameterIndex;
     private final ObjectActionDefault parentAction;
     private final String javaSourceParamName;
@@ -161,7 +163,7 @@ implements
     // -- FacetHolder
 
     @Override
-    public FacetHolder getFacetHolder() {
+    public FacetHolder facetHolder() {
         // that is the faceted method parameter
         return parentAction.getFacetedMethod().parameter(parameterIndex);
     }
@@ -177,8 +179,7 @@ implements
 
     @Override
     public boolean hasAutoComplete() {
-        var actionParameterAutoCompleteFacet = getFacet(ActionParameterAutoCompleteFacet.class);
-        return actionParameterAutoCompleteFacet != null;
+        return containsFacet(ActionParameterAutoCompleteFacet.class);
     }
 
     @Override
@@ -187,10 +188,9 @@ implements
             final String searchArg,
             final InteractionInitiatedBy interactionInitiatedBy) {
 
-        var autoCompleteFacet = getFacet(ActionParameterAutoCompleteFacet.class);
-        if (autoCompleteFacet == null) {
-            return Can.empty();
-        }
+        var autoCompleteFacet = lookupFacet(ActionParameterAutoCompleteFacet.class).orElse(null);
+        if (autoCompleteFacet == null)
+			return Can.empty();
 
         var paramSpec = getElementType();
 
@@ -207,7 +207,7 @@ implements
 
     @Override
     public int getAutoCompleteMinLength() {
-        final ActionParameterAutoCompleteFacet facet = getFacet(ActionParameterAutoCompleteFacet.class);
+        final ActionParameterAutoCompleteFacet facet = lookupFacet(ActionParameterAutoCompleteFacet.class).orElse(null);
         return facet != null? facet.getMinLength(): MinLengthUtil.MIN_LENGTH_DEFAULT;
     }
 
@@ -215,8 +215,7 @@ implements
 
     @Override
     public boolean hasChoices() {
-        var choicesFacet = getFacet(ActionParameterChoicesFacet.class);
-        return choicesFacet != null;
+        return containsFacet(ActionParameterChoicesFacet.class);
     }
 
     @Override
@@ -225,10 +224,9 @@ implements
             final InteractionInitiatedBy interactionInitiatedBy) {
 
         var paramSpec = getElementType();
-        var choicesFacet = getFacet(ActionParameterChoicesFacet.class);
-        if (choicesFacet == null) {
-            return Can.empty();
-        }
+        var choicesFacet = lookupFacet(ActionParameterChoicesFacet.class).orElse(null);
+        if (choicesFacet == null)
+			return Can.empty();
 
         var visibleChoices = choicesFacet.getChoices(paramSpec,
                 pendingArgs.actionInteractionHead(),
@@ -284,23 +282,22 @@ implements
             // check type, but wrap first
             // (eg we treat int.class and java.lang.Integer.class as compatible with each other)
             final Class<?> choiceClass = choicePojo.getClass();
-            final Class<?> paramClass = paramSpec.getCorrespondingClass();
+            final Class<?> paramClass = paramSpec.correspondingClass();
 
             final Class<?> choiceWrappedClass = ClassExtensions.asWrappedIfNecessary(choiceClass);
             final Class<?> paramWrappedClass = ClassExtensions.asWrappedIfNecessary(paramClass);
 
-            final ObjectSpecification choiceWrappedSpec = specificationLookup.loadSpecification(choiceWrappedClass);
-            final ObjectSpecification paramWrappedSpec = specificationLookup.loadSpecification(paramWrappedClass);
+            final ObjectSpecification choiceWrappedSpec = specificationLookup.loadSpecificationTypeOnly(choiceWrappedClass);
+            final ObjectSpecification paramWrappedSpec = specificationLookup.loadSpecificationTypeOnly(paramWrappedClass);
 
             // type returned by choices must be an instance of the param type
             // in other words <param type> is assignable from <choices type>
 
             // TODO: should implement this instead as a MetaModelValidator (subject to [CAUSEWAY-3172])
-            if (!choiceWrappedSpec.isOfType(paramWrappedSpec)) {
-                throw new DomainModelException(String.format(
+            if (!choiceWrappedSpec.isOfType(paramWrappedSpec))
+				throw new DomainModelException(String.format(
                         "Type incompatible with parameter type; expected %s, but was %s",
-                        paramSpec.getFullIdentifier(), choiceClass.getName()));
-            }
+                        paramSpec.fullIdentifier(), choiceClass.getName()));
         }
     }
 
@@ -391,6 +388,12 @@ implements
     @Override
     public String toString() {
         return String.format("ObjectActionParameter[id=%s]", getFeatureIdentifier());
+    }
+
+    // -- HELPER
+
+    SpecificationLoaderInternal specLoaderInternal() {
+    	return (SpecificationLoaderInternal) parentAction.getSpecificationLoader();
     }
 
 }

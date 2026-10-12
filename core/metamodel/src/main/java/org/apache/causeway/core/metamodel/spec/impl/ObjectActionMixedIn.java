@@ -20,8 +20,6 @@ package org.apache.causeway.core.metamodel.spec.impl;
 
 import java.util.Optional;
 
-import org.jspecify.annotations.NonNull;
-
 import org.apache.causeway.applib.Identifier;
 import org.apache.causeway.applib.annotation.Domain;
 import org.apache.causeway.applib.annotation.DomainObject;
@@ -33,6 +31,7 @@ import org.apache.causeway.commons.internal.assertions._Assert;
 import org.apache.causeway.core.metamodel.commons.UtilStr;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
+import org.apache.causeway.core.metamodel.facets.actions.action.invocation.ActionInvocationFacet;
 import org.apache.causeway.core.metamodel.facets.all.named.MemberNamedFacet;
 import org.apache.causeway.core.metamodel.facets.all.named.MemberNamedFacetForStaticMemberName;
 import org.apache.causeway.core.metamodel.interactions.InteractionHead;
@@ -40,8 +39,10 @@ import org.apache.causeway.core.metamodel.object.ManagedObject;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
 import org.apache.causeway.core.metamodel.spec.feature.MixedInAction;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
+import org.jspecify.annotations.NonNull;
 
 import lombok.Getter;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -70,7 +71,7 @@ implements MixedInAction {
     /**
      * Hold facets rather than delegate to the mixin action
      */
-    @Getter(onMethod = @__(@Override))
+    @Getter(onMethod = @__(@Override)) @Accessors(fluent = true)
     private final FacetHolder facetHolder;
 
     public ObjectActionMixedIn(
@@ -81,7 +82,7 @@ implements MixedInAction {
 
         super(Identifier.actionIdentifier(
                     LogicalType.eager(
-                            mixeeSpec.getCorrespondingClass(),
+                            mixeeSpec.correspondingClass(),
                             mixeeSpec.logicalTypeName()),
                     _MixedInMemberNamingStrategy.mixinMemberId(mixinAction),
                     mixinAction.getFacetedMethod().getFeatureIdentifier().memberParameterClassNames()),
@@ -101,8 +102,7 @@ implements MixedInAction {
 
         if(!isExplicitlyNamed) {
             var memberName = _MixedInMemberNamingStrategy.mixinFriendlyName(mixinAction);
-            this.addFacet(
-                    new MemberNamedFacetForStaticMemberName(memberName, facetHolder));
+            new MemberNamedFacetForStaticMemberName(memberName, facetHolder);
         }
     }
 
@@ -176,9 +176,24 @@ implements MixedInAction {
             }
         }
 
-        return mixinAction.executeInternal(
-                head, argumentAdapters,
-                interactionInitiatedBy);
+        return hasLocalActionInvocationFacet()
+                ? this.executeInternal(
+                        head, argumentAdapters,
+                        interactionInitiatedBy)
+                : mixinAction.executeInternal(
+                        head, argumentAdapters,
+                        interactionInitiatedBy);
+    }
+
+    /**
+     * Whether a mixee-specific {@link ActionInvocationFacet} has been installed on this mixed-in action's
+     * local facet holder (by {@code SynthesizeDomainEventsForMixinPostProcessor}), distinct from the shared
+     * mixin action's facet. When present, execution must route through this member so the mixee-specific
+     * domain-event type is posted.
+     */
+    private boolean hasLocalActionInvocationFacet() {
+        return this.lookupFacet(ActionInvocationFacet.class).orElse(null)
+                != mixinAction.lookupFacet(ActionInvocationFacet.class).orElse(null);
     }
 
     @Override

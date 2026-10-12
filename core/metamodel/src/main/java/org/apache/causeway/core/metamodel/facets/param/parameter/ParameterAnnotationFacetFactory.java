@@ -18,9 +18,6 @@
  */
 package org.apache.causeway.core.metamodel.facets.param.parameter;
 
-import jakarta.inject.Inject;
-import jakarta.validation.constraints.Pattern;
-
 import org.apache.causeway.applib.annotation.Parameter;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
@@ -33,6 +30,9 @@ import org.apache.causeway.core.metamodel.facets.param.parameter.mustsatisfy.Mus
 import org.apache.causeway.core.metamodel.facets.param.parameter.precpol.PrecedingParametersPolicyFacet;
 import org.apache.causeway.core.metamodel.facets.param.parameter.regex.RegExFacetForParameterAnnotation;
 import org.apache.causeway.core.metamodel.facets.param.parameter.regex.RegExFacetForPatternAnnotationOnParameter;
+
+import jakarta.inject.Inject;
+import jakarta.validation.constraints.Pattern;
 
 public class ParameterAnnotationFacetFactory
 extends FacetFactoryAbstract {
@@ -54,79 +54,60 @@ extends FacetFactoryAbstract {
 
     // check for @Parameter(precedingParamsPolicy=...)
     void processPrecedingParamsPolicy(final ProcessParameterContext processParameterContext) {
-
-        var holder = processParameterContext.getFacetHolder();
+        var holder = processParameterContext.facetHolder();
         var parameterIfAny = processParameterContext.synthesizeOnParameter(Parameter.class);
-
-        addFacetIfPresent(
-                PrecedingParametersPolicyFacet
-                        .create(parameterIfAny, getConfiguration(), holder));
+        PrecedingParametersPolicyFacet
+            .create(parameterIfAny, getConfiguration(), holder);
     }
 
     void processParamsMaxLength(final ProcessParameterContext processParameterContext) {
-
-        var holder = processParameterContext.getFacetHolder();
+        var holder = processParameterContext.facetHolder();
         var parameterIfAny = processParameterContext.synthesizeOnParameter(Parameter.class);
-
-        addFacetIfPresent(
-                MaxLengthFacetForParameterAnnotation
-                .create(parameterIfAny, holder));
+        MaxLengthFacetForParameterAnnotation
+            .create(parameterIfAny, holder);
     }
 
     void processParamsMustSatisfy(final ProcessParameterContext processParameterContext) {
-
-        var holder = processParameterContext.getFacetHolder();
+        var holder = processParameterContext.facetHolder();
         var parameterIfAny = processParameterContext.synthesizeOnParameter(Parameter.class);
-
-        addFacetIfPresent(
-                MustSatisfySpecificationFacetForParameterAnnotation
-                .create(parameterIfAny, holder, getFactoryService()));
+        MustSatisfySpecificationFacetForParameterAnnotation
+            .create(parameterIfAny, holder, getFactoryService());
     }
 
     void processParamsRegEx(final ProcessParameterContext processParameterContext) {
-
-        var holder = processParameterContext.getFacetHolder();
+        var holder = processParameterContext.facetHolder();
         var parameterIfAny = processParameterContext.synthesizeOnParameter(Parameter.class);
 
-        var parameterType = processParameterContext.getParameterType();
+        var parameterType = processParameterContext.parameterType();
 
         var patternIfAny = processParameterContext.synthesizeOnParameter(Pattern.class);
-        addFacetIfPresent(
-                RegExFacetForPatternAnnotationOnParameter
-                .create(patternIfAny, parameterType, holder));
 
-        addFacetIfPresent(
-                RegExFacetForParameterAnnotation
-                .create(parameterIfAny, parameterType, holder));
+        RegExFacetForPatternAnnotationOnParameter
+            .create(patternIfAny, parameterType, holder);
+        RegExFacetForParameterAnnotation
+            .create(parameterIfAny, parameterType, holder);
     }
 
     void processParamsOptional(final ProcessParameterContext processParameterContext) {
-
-        var holder = processParameterContext.getFacetHolder();
+        var holder = processParameterContext.facetHolder();
         var parameterIfAny = processParameterContext.synthesizeOnParameter(Parameter.class);
 
         var hasNullable = processParameterContext.streamParameterAnnotations()
             .anyMatch(annot->annot.annotationType().getSimpleName().equals("Nullable"));
 
-        var parameterType = processParameterContext.getParameterType();
+        var parameterType = processParameterContext.parameterType();
 
-        addFacetIfPresent(
-                MandatoryFacetInvertedByNullableAnnotationOnParameter
-                .create(hasNullable, parameterType, holder));
-
-        addFacetIfPresent(
-                MandatoryFacetForParameterAnnotation
-                .create(parameterIfAny, parameterType, holder));
+        MandatoryFacetInvertedByNullableAnnotationOnParameter
+            .create(hasNullable, parameterType, holder);
+        MandatoryFacetForParameterAnnotation
+                .create(parameterIfAny, parameterType, holder);
     }
 
     void processParamsFileAccept(final ProcessParameterContext processParameterContext) {
-
-        var holder = processParameterContext.getFacetHolder();
+        var holder = processParameterContext.facetHolder();
         var parameterIfAny = processParameterContext.synthesizeOnParameter(Parameter.class);
-
-        addFacetIfPresent(
-                FileAcceptFacetForParameterAnnotation
-                .create(parameterIfAny, holder));
+        FileAcceptFacetForParameterAnnotation
+            .create(parameterIfAny, holder);
     }
 
 }

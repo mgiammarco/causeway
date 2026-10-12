@@ -27,8 +27,8 @@ import org.apache.causeway.commons.internal.exceptions._Exceptions;
 import org.apache.causeway.commons.internal.reflection._GenericResolver.ResolvedType;
 import org.apache.causeway.core.metamodel.commons.ToString;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
-import org.apache.causeway.core.metamodel.facets.FacetedMethod;
 import org.apache.causeway.core.metamodel.facets.collections.CollectionFacet;
 import org.apache.causeway.core.metamodel.facets.propcoll.accessor.PropertyOrCollectionAccessorFacet;
 import org.apache.causeway.core.metamodel.interactions.InteractionUtils;
@@ -53,7 +53,7 @@ implements OneToManyAssociation {
                 facetedMethod.getFeatureIdentifier(),
                 facetedMethod,
                 ((SpecificationLoaderInternal)facetedMethod.getMetaModelContext().getSpecificationLoader())
-                    .loadSpecification(facetedMethod.resolvedType().elementType()));
+                    .loadSpecificationTypeOnly(facetedMethod.resolvedType().elementType()));
     }
 
     protected OneToManyAssociationDefault(
@@ -68,7 +68,7 @@ implements OneToManyAssociation {
     @Getter(onMethod_={@Override}, lazy = true)
     private final ResolvedType typeOfAnyCardinality = resolveTypeOfAnyCardinality();
     private ResolvedType resolveTypeOfAnyCardinality() {
-        return Facets.typeOfAnyCardinality(getFacetHolder())
+        return Facets.typeOfAnyCardinality(facetHolder())
                 .orElseThrow(()->_Exceptions.unrecoverable(
                         "framework bug: non-scalar feature must have a TypeOfFacet"));
     }
@@ -103,9 +103,10 @@ implements OneToManyAssociation {
             final ManagedObject ownerAdapter,
             final InteractionInitiatedBy interactionInitiatedBy) {
 
-        var accessor = getFacet(PropertyOrCollectionAccessorFacet.class);
+        var accessor = lookupFacet(PropertyOrCollectionAccessorFacet.class).orElseThrow();
         var collection = accessor.getAssociationValueAsPojo(ownerAdapter, interactionInitiatedBy);
-        if (collection == null) return null;
+        if (collection == null)
+        	return null;
 
         return getObjectManager().adapt(collection, this::getElementType);
     }
@@ -175,7 +176,7 @@ implements OneToManyAssociation {
         str.append(",");
         str.append("type", getElementType() == null
                 ? "unknown"
-                : getElementType().getShortIdentifier());
+                : getElementType().shortIdentifier());
         return str.toString();
     }
 

@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # to be shared among all steps of this job
-      BASELINE: 4.0.0-SNAPSHOT
+      BASELINE: 4.0.0-M2
       PROJECT_ROOT_PATH: ${{ github.workspace }}
       CI_SCRIPTS_PATH: ${{ github.workspace }}/scripts/ci
       ANTORA_PLAYBOOKS_PATH: ${{ github.workspace }}/antora/playbooks
@@ -30,10 +30,10 @@ jobs:
       SHARED_VARS_FILE: /home/runner/.env
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     - name: Set up JDK 25
-      uses: actions/setup-java@v5
+      uses: actions/setup-java@v6
       with:
         distribution: 'temurin'
         java-version: 25
@@ -67,7 +67,7 @@ jobs:
       working-directory: ${{ env.PROJECT_ROOT_PATH }}
       # we install the 'node' modules into the project root under 'node_modules',
       # because we have no privileges to install them globally with -g option
-      run: npm i @antora/cli@^3.1.14 @antora/site-generator-default@^3.1.14  asciidoctor-kroki
+      run: npm i @antora/cli@^3.1.15 @antora/site-generator-default@^3.1.15  asciidoctor-kroki@0.18.1
 
     - name: List Versions of installed NPM Packages
       shell: bash

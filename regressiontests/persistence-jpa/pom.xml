@@ -59,9 +59,9 @@
 			<artifactId>causeway-testing-fixtures-applib</artifactId>
 			<scope>test</scope>
 		</dependency>
-		
+
 		<!-- EXTENSIONS (to verify static weaving was done) -->
-		
+
 		<dependency>
             <groupId>org.apache.causeway.extensions</groupId>
             <artifactId>causeway-extensions-audittrail-persistence-jpa</artifactId>

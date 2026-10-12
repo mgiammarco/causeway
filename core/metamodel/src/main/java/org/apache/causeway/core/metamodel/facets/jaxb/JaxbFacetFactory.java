@@ -18,23 +18,20 @@
  */
 package org.apache.causeway.core.metamodel.facets.jaxb;
 
+import static org.apache.causeway.commons.internal.reflection._Reflect.predicates.isPublic;
+import static org.apache.causeway.commons.internal.reflection._Reflect.predicates.paramCount;
+
 import java.lang.reflect.Modifier;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import jakarta.inject.Inject;
-import jakarta.xml.bind.annotation.XmlAccessType;
-import jakarta.xml.bind.annotation.XmlAccessorType;
-import jakarta.xml.bind.annotation.XmlTransient;
-import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
-
-import org.apache.causeway.commons.internal.collections._Lists;
 import org.apache.causeway.commons.internal.reflection._Reflect;
 import org.apache.causeway.core.config.CausewayConfiguration;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
@@ -50,9 +47,11 @@ import org.apache.causeway.core.metamodel.spec.feature.MixedIn;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectAssociation;
 import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailure;
 
-import static org.apache.causeway.commons.internal.reflection._Reflect.predicates.isPublic;
-import static org.apache.causeway.commons.internal.reflection._Reflect.predicates.paramCount;
-
+import jakarta.inject.Inject;
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlTransient;
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -76,92 +75,75 @@ implements MetaModelRefiner {
     }
 
     private void processXmlJavaTypeAdapter(final ProcessClassContext processClassContext) {
-
         var xmlJavaTypeAdapterIfAny = processClassContext.synthesizeOnType(XmlJavaTypeAdapter.class);
-        if(!xmlJavaTypeAdapterIfAny.isPresent()) {
-            return;
-        }
+        if(!xmlJavaTypeAdapterIfAny.isPresent())
+			return;
 
-        var facetHolder = processClassContext.getFacetHolder();
-
-        addFacet(
-                new XmlJavaTypeAdapterFacetDefault(facetHolder, xmlJavaTypeAdapterIfAny.get().value()));
+        var facetHolder = processClassContext.facetHolder();
+        new XmlJavaTypeAdapterFacetDefault(facetHolder, xmlJavaTypeAdapterIfAny.get().value());
     }
 
     private void processXmlAccessorTypeFacet(final ProcessClassContext processClassContext) {
-
         var xmlAccessorTypeIfAny = processClassContext.synthesizeOnType(XmlAccessorType.class);
-        if(!xmlAccessorTypeIfAny.isPresent()) {
-            return;
-        }
+        if(!xmlAccessorTypeIfAny.isPresent())
+			return;
 
-        var facetHolder = processClassContext.getFacetHolder();
-        addFacet(
-                new XmlAccessorTypeFacetDefault(facetHolder, xmlAccessorTypeIfAny.get().value()));
+        var facetHolder = processClassContext.facetHolder();
+        new XmlAccessorTypeFacetDefault(facetHolder, xmlAccessorTypeIfAny.get().value());
     }
 
     // -- METHOD CONTEXT
 
     @Override
     public void process(final ProcessMethodContext processMethodContext) {
-
         //[ahuber] accessType not yet used, but could be in future extensions
         final Optional<XmlAccessorTypeFacet> accessorTypeFacet =
-                Optional.ofNullable(processMethodContext.getFacetHolder().getFacet(XmlAccessorTypeFacet.class));
+                Optional.ofNullable(processMethodContext.facetHolder().lookupFacet(XmlAccessorTypeFacet.class).orElse(null));
         final XmlAccessType accessType = accessorTypeFacet
-                .map(facet->facet.value())
+                .map(XmlAccessorTypeFacet::value)
                 .orElse(XmlAccessType.PUBLIC_MEMBER); // the annotation's default value
         // ---
 
         processXmlJavaTypeAdapter(processMethodContext, accessType);
         processXmlTransient(processMethodContext, accessType);
-
     }
 
     private void processXmlJavaTypeAdapter(final ProcessMethodContext processMethodContext, final XmlAccessType accessType) {
-
         var xmlJavaTypeAdapterIfAny = processMethodContext.synthesizeOnMethod(XmlJavaTypeAdapter.class);
 
-        if(!xmlJavaTypeAdapterIfAny.isPresent()) {
-            return;
-        }
+        if(!xmlJavaTypeAdapterIfAny.isPresent())
+			return;
 
-        var facetHolder = processMethodContext.getFacetHolder();
-        addFacet(
-                new XmlJavaTypeAdapterFacetDefault(facetHolder, xmlJavaTypeAdapterIfAny.get().value()));
+        var facetHolder = processMethodContext.facetHolder();
+        new XmlJavaTypeAdapterFacetDefault(facetHolder, xmlJavaTypeAdapterIfAny.get().value());
     }
 
     private void processXmlTransient(final ProcessMethodContext processMethodContext, final XmlAccessType accessType) {
-
         var xmlTransientIfAny = processMethodContext.synthesizeOnMethod(XmlTransient.class);
 
-        if(!xmlTransientIfAny.isPresent()) {
-            return;
-        }
+        if(!xmlTransientIfAny.isPresent())
+			return;
 
-        var facetHolder = processMethodContext.getFacetHolder();
-        addFacet(new XmlTransientFacetDefault(facetHolder));
+        var facetHolder = processMethodContext.facetHolder();
+        new XmlTransientFacetDefault(facetHolder);
     }
 
     // --
 
     @Override
     public void refineProgrammingModel(final ProgrammingModel programmingModel) {
-
         final List<TypeValidator> typeValidators = getTypeValidators(getConfiguration());
         final List<AssociationValidator> associationValidators = getAssociationValidators(getConfiguration());
 
         programmingModel.addValidatorSkipManagedBeans(objectSpec->{
 
             final boolean viewModel = objectSpec.isViewModel();
-            if(!viewModel) {
-                return;
-            }
+            if(!viewModel)
+				return;
 
-            final ViewModelFacet facet = objectSpec.getFacet(ViewModelFacet.class);
-            if (!(facet instanceof ViewModelFacetForXmlRootElementAnnotation)) {
-                return;
-            }
+            final ViewModelFacet facet = objectSpec.lookupFacet(ViewModelFacet.class).orElse(null);
+            if (!(facet instanceof ViewModelFacetForXmlRootElementAnnotation))
+				return;
 
             for (final TypeValidator typeValidator : typeValidators) {
                 typeValidator.validate(objectSpec);
@@ -171,21 +153,20 @@ implements MetaModelRefiner {
                     .streamAssociations(MixedIn.EXCLUDED);
 
             associations
-            // ignore derived
-            .filter(association->association.containsNonFallbackFacet(PropertySetterFacet.class))
-            .forEach(association->{
-                for (final AssociationValidator adapterValidator : associationValidators) {
-                    adapterValidator.validate(objectSpec, association);
-                }
-            });
+	            // ignore derived
+	            .filter(association->association.containsNonFallbackFacet(PropertySetterFacet.class))
+	            .forEach(association->{
+	                for (final AssociationValidator adapterValidator : associationValidators) {
+	                    adapterValidator.validate(objectSpec, association);
+	                }
+	            });
 
         });
 
     }
 
     private List<TypeValidator> getTypeValidators(final CausewayConfiguration configuration) {
-
-        final List<TypeValidator> typeValidators = _Lists.newArrayList();
+        final List<TypeValidator> typeValidators = new ArrayList<>();
         if(configuration.core().metaModel().validator().jaxbViewModel().notAbstract()) {
             typeValidators.add(new JaxbViewModelNotAbstractValidator());
         }
@@ -199,7 +180,7 @@ implements MetaModelRefiner {
     }
 
     private List<AssociationValidator> getAssociationValidators(final CausewayConfiguration configuration) {
-        final List<AssociationValidator> associationValidators = _Lists.newArrayList();
+        final List<AssociationValidator> associationValidators = new ArrayList<>();
         if(configuration.core().metaModel().validator().jaxbViewModel().referenceTypeAdapter()) {
             associationValidators.add(new PropertyValidatorForReferenceTypes());
         }
@@ -242,14 +223,14 @@ implements MetaModelRefiner {
                     && !propertyOrCollection.containsFacet(XmlTransientFacet.class)
                     && !elementTypeSpec.containsFacet(XmlJavaTypeAdapterFacet.class)) {
 
-                var elementType = elementTypeSpec.getCorrespondingClass();
+                var elementType = elementTypeSpec.correspondingClass();
                 ValidationFailure.raiseFormatted(
                         propertyOrCollection,
                         "JAXB view model '%s' %s '%s' is of entity type '%s', "
                         + "but is not annotated with @XmlJavaTypeAdapter. "
                         + "The referenced entity types must be annotated with "
                         + "@XmlJavaTypeAdapter(org.apache.causeway.applib.jaxb.%s.class) or equivalent.",
-                        objectSpec.getFullIdentifier(),
+                        objectSpec.fullIdentifier(),
                         elementTypeSpec.isSingular()
                             ? "@Property"
                             : "@Collection",
@@ -273,7 +254,7 @@ implements MetaModelRefiner {
                 final ObjectAssociation propertyOrCollection) {
 
             var elementTypeSpec = propertyOrCollection.getElementType();
-            var elementType = elementTypeSpec.getCorrespondingClass();
+            var elementType = elementTypeSpec.correspondingClass();
             if (dateType.isAssignableFrom(elementType)
                     && !propertyOrCollection.containsFacet(XmlJavaTypeAdapterFacet.class)
                     && !propertyOrCollection.containsFacet(XmlTransientFacet.class)) {
@@ -286,7 +267,7 @@ implements MetaModelRefiner {
                         + "@XmlJavaTypeAdapter(org.apache.causeway.applib.jaxb.XxxJaxbAdapters.XxxToStringAdapter.class) "
                         + "or equivalent, "
                         + "or be ignored by being annotated with @XmlTransient.",
-                        objectSpec.getFullIdentifier(),
+                        objectSpec.fullIdentifier(),
                         elementTypeSpec.isSingular()
                             ? "@Property"
                             : "@Collection",
@@ -305,7 +286,7 @@ implements MetaModelRefiner {
             if(objectSpec.isAbstract()) {
                 ValidationFailure.raise(
                         objectSpec,
-                        String.format("JAXB view model '%s' is abstract", objectSpec.getFullIdentifier())
+                        String.format("JAXB view model '%s' is abstract", objectSpec.fullIdentifier())
                         );
             }
         }
@@ -316,22 +297,22 @@ implements MetaModelRefiner {
         void validate(
                 final ObjectSpecification objectSpec) {
 
-            final Class<?> correspondingClass = objectSpec.getCorrespondingClass();
+            final Class<?> correspondingClass = objectSpec.correspondingClass();
             if(correspondingClass.isAnonymousClass()) {
                 ValidationFailure.raiseFormatted(
                         objectSpec,
                         "JAXB view model '%s' is an anonymous class",
-                        objectSpec.getFullIdentifier());
+                        objectSpec.fullIdentifier());
             } else if(correspondingClass.isLocalClass()) {
                 ValidationFailure.raiseFormatted(
                         objectSpec,
                         "JAXB view model '%s' is a local class",
-                        objectSpec.getFullIdentifier());
+                        objectSpec.fullIdentifier());
             } else if(correspondingClass.isMemberClass() && !Modifier.isStatic(correspondingClass.getModifiers())) {
                 ValidationFailure.raiseFormatted(
                         objectSpec,
                         "JAXB view model '%s' is an non-static inner class",
-                        objectSpec.getFullIdentifier());
+                        objectSpec.fullIdentifier());
             }
         }
     }
@@ -339,16 +320,14 @@ implements MetaModelRefiner {
     private static class JaxbViewModelPublicNoArgConstructorValidator extends TypeValidator {
         @Override
         void validate(final ObjectSpecification objectSpec) {
-
-            var correspondingClass = objectSpec.getCorrespondingClass();
+            var correspondingClass = objectSpec.correspondingClass();
 
             var publicNoArgConstructors = _Reflect
                     .getPublicConstructors(correspondingClass)
                     .filter(paramCount(0));
 
-            if(publicNoArgConstructors.getCardinality().isOne()) {
-                return; // happy case
-            }
+            if(publicNoArgConstructors.getCardinality().isOne())
+				return; // happy case
 
             var privateNoArgConstructors = _Reflect
                     .getDeclaredConstructors(correspondingClass)
@@ -358,12 +337,12 @@ implements MetaModelRefiner {
                 ValidationFailure.raiseFormatted(
                         objectSpec,
                         "JAXB view model '%s' has a no-arg constructor, however it is not public",
-                        objectSpec.getFullIdentifier());
+                        objectSpec.fullIdentifier());
             } else {
                 ValidationFailure.raiseFormatted(
                         objectSpec,
                         "JAXB view model '%s' does not have a public no-arg constructor",
-                        objectSpec.getFullIdentifier());
+                        objectSpec.fullIdentifier());
             }
         }
     }

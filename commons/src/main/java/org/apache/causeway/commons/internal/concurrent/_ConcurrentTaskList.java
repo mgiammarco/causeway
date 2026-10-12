@@ -32,10 +32,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 
 import org.apache.causeway.commons.concurrent.AwaitableLatch;
-import org.apache.causeway.commons.internal.collections._Lists;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 @RequiredArgsConstructor(staticName = "named")
@@ -44,7 +44,7 @@ public class _ConcurrentTaskList {
 
     @Getter private final String name;
 
-    private final List<_ConcurrentTask<?>> tasks = _Lists.newArrayList();
+    private final List<_ConcurrentTask<?>> tasks = new ArrayList<>();
     private final AtomicBoolean wasStarted = new AtomicBoolean();
     private final CountDownLatch allFinishedLatch = new CountDownLatch(1);
     private final AwaitableLatch awaitableLatch = new AwaitableLatch(allFinishedLatch);
@@ -168,7 +168,6 @@ public class _ConcurrentTaskList {
     // -- EXECUTION LOGGING
 
     private void onFinished(final _ConcurrentContext context) {
-
         for(var task: tasks) {
             if(task.getFailedWith()!=null) {
                 log.error("----------------------------------------");
@@ -178,9 +177,8 @@ public class _ConcurrentTaskList {
             }
         }
 
-        if(!context.enableExecutionLogging()) {
-            return;
-        }
+        if(!context.enableExecutionLogging())
+			return;
 
         log.info("TaskList '%s' running %d/%d tasks %s, took %.3f milliseconds "
             .formatted(getName(),
@@ -189,6 +187,15 @@ public class _ConcurrentTaskList {
                 context.shouldRunSequential() ? "sequential" : "concurrent",
                         0.000_001 * executionTimeNanos));
 
+    }
+
+    @SneakyThrows
+    public void rethrow() {
+        for(var task: tasks) {
+            if(task.getFailedWith()!=null) {
+            	throw task.getFailedWith();
+            }
+        }
     }
 
     // -- SHORTCUTS

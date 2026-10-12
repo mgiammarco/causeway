@@ -21,10 +21,12 @@ package org.apache.causeway.core.metamodel.spec.impl;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -32,12 +34,13 @@ import org.apache.causeway.applib.annotation.Introspection.IntrospectionPolicy;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.internal.collections._Multimaps;
 import org.apache.causeway.commons.internal.collections._Multimaps.ListMultimap;
-import org.apache.causeway.commons.internal.collections._Sets;
 import org.apache.causeway.commons.internal.reflection._GenericResolver.ResolvedMethod;
 import org.apache.causeway.commons.internal.reflection._MethodFacades.MethodFacade;
 import org.apache.causeway.core.metamodel.context.HasMetaModelContext;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethodParameter;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facetapi.MethodRemover;
 import org.apache.causeway.core.metamodel.facets.AccessorFacetFactory;
@@ -45,16 +48,14 @@ import org.apache.causeway.core.metamodel.facets.FacetFactory;
 import org.apache.causeway.core.metamodel.facets.FacetFactory.ProcessClassContext;
 import org.apache.causeway.core.metamodel.facets.FacetFactory.ProcessMethodContext;
 import org.apache.causeway.core.metamodel.facets.FacetFactory.ProcessParameterContext;
-import org.apache.causeway.core.metamodel.facets.FacetedMethod;
-import org.apache.causeway.core.metamodel.facets.FacetedMethodParameter;
 import org.apache.causeway.core.metamodel.facets.ObjectTypeFacetFactory;
 import org.apache.causeway.core.metamodel.facets.ObjectTypeFacetFactory.ProcessObjectTypeContext;
 import org.apache.causeway.core.metamodel.methods.MethodFilteringFacetFactory;
 import org.apache.causeway.core.metamodel.methods.MethodPrefixBasedFacetFactory;
 import org.apache.causeway.core.metamodel.progmodel.ProgrammingModel;
-import org.apache.causeway.core.metamodel.spec.feature.ObjectMember;
-
+import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
 import org.jspecify.annotations.NonNull;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -170,10 +171,10 @@ implements HasMetaModelContext {
     public List<ResolvedMethod> findAndRemovePropertyAccessors(
             final MethodRemover methodRemover) {
         var propertyAccessors = new ArrayList<ResolvedMethod>();
-        for (var facetFactory : propertyAccessorFactories) {
-            methodRemover.removeMethods(facetFactory::isAssociationAccessor, propertyAccessors::add);
-        }
-        return propertyAccessors;
+        propertyAccessorFactories
+        	.forEach(factory->
+            	methodRemover.removeMethods(factory::isAssociationAccessor, propertyAccessors::add));
+        return Collections.unmodifiableList(propertyAccessors);
     }
 
     /**
@@ -184,10 +185,9 @@ implements HasMetaModelContext {
     public List<ResolvedMethod> findAndRemoveCollectionAccessors(
             final MethodRemover methodRemover) {
         var collectionAccessors = new ArrayList<ResolvedMethod>();
-        for (var facetFactory : collectionAccessorFactories) {
-            methodRemover.removeMethods(facetFactory::isAssociationAccessor, collectionAccessors::add);
-        }
-        return collectionAccessors;
+        collectionAccessorFactories.forEach(factory->
+            methodRemover.removeMethods(factory::isAssociationAccessor, collectionAccessors::add));
+        return Collections.unmodifiableList(collectionAccessors);
     }
 
     /**
@@ -241,12 +241,14 @@ implements HasMetaModelContext {
             final Class<?> cls,
             final IntrospectionPolicy introspectionPolicy,
             final MethodRemover methodRemover,
-            final FacetHolder facetHolder) {
+            final FacetHolder facetHolder,
+            final Function<Class<?>, ObjectSpecification> loadSpecificationTypeOnlyFunction) {
         var ctx = new ProcessClassContext(
                 cls,
                 introspectionPolicy,
                 removerElseNoopRemover(methodRemover),
-                facetHolder);
+                facetHolder,
+                loadSpecificationTypeOnlyFunction);
 
         factoriesByFeatureType.getOrElseEmpty(FeatureType.OBJECT)
             .forEach(facetFactory->facetFactory.process(ctx));
@@ -281,7 +283,8 @@ implements HasMetaModelContext {
             final MethodRemover methodRemover,
             final FacetedMethod facetedMethod,
             final FeatureType featureType,
-            final boolean isMixinMain) {
+            final boolean isMixinMain,
+            final Function<Class<?>, ObjectSpecification> loadSpecificationTypeOnlyFunction) {
 
         var processMethodContext =
                 new ProcessMethodContext(
@@ -289,8 +292,8 @@ implements HasMetaModelContext {
                         introspectionPolicy,
                         featureType,
                         method,
-                        removerElseNoopRemover(methodRemover), facetedMethod, isMixinMain);
-        
+                        removerElseNoopRemover(methodRemover), facetedMethod, isMixinMain, loadSpecificationTypeOnlyFunction);
+
         // warn on parameter names NOT reflectable
         if(processMethodContext.hasPotentialNonReflectableParameterNames()) {
     		log.warn("potential missing -parameters compiler flag with method {}#{}",
@@ -301,10 +304,6 @@ implements HasMetaModelContext {
         for (FacetFactory facetFactory : factoriesByFeatureType.getOrElseEmpty(featureType)) {
             facetFactory.process(processMethodContext);
         }
-    }
-
-    public void processMemberOrder(final ObjectMember facetHolder) {
-
     }
 
     /**
@@ -352,7 +351,7 @@ implements HasMetaModelContext {
     }
 
     private static Set<String> methodPrefixes(final Iterable<FacetFactory> factories) {
-        var cachedMethodPrefixes = _Sets.<String>newHashSet();
+        var cachedMethodPrefixes = new HashSet<String>();
         for (var facetFactory : factories) {
             if (facetFactory instanceof MethodPrefixBasedFacetFactory methodPrefixBasedFacetFactory) {
                 methodPrefixBasedFacetFactory.getPrefixes().forEach(cachedMethodPrefixes::add);
@@ -375,7 +374,9 @@ implements HasMetaModelContext {
         var propertyOrCollectionIdentifyingFactories = new ArrayList<AccessorFacetFactory>();
         for (var factory : factories) {
             if (factory instanceof AccessorFacetFactory accessorFacetFactory) {
-                if(!accessorFacetFactory.supportsProperties()) continue;
+                if(!accessorFacetFactory.supportsProperties()) {
+					continue;
+				}
                 propertyOrCollectionIdentifyingFactories.add(accessorFacetFactory);
             }
         }
@@ -385,7 +386,9 @@ implements HasMetaModelContext {
         var propertyOrCollectionIdentifyingFactories = new ArrayList<AccessorFacetFactory>();
         for (var factory : factories) {
             if (factory instanceof AccessorFacetFactory accessorFacetFactory) {
-                if(!accessorFacetFactory.supportsCollections()) continue;
+                if(!accessorFacetFactory.supportsCollections()) {
+					continue;
+				}
                 propertyOrCollectionIdentifyingFactories.add(accessorFacetFactory);
             }
         }

@@ -18,13 +18,13 @@
  */
 package org.apache.causeway.core.metamodel.facets.properties.autocomplete.method;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.core.config.progmodel.ProgrammingModelConstants.MemberSupportPrefix;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facets.members.support.MemberSupportFacetFactoryAbstract;
 import org.apache.causeway.core.metamodel.methods.MethodFinder;
+
+import jakarta.inject.Inject;
 
 public class PropertyAutoCompleteFacetMethodFactory
 extends MemberSupportFacetFactoryAbstract {
@@ -39,17 +39,15 @@ extends MemberSupportFacetFactoryAbstract {
             final ProcessMethodContext processMethodContext,
             final MethodFinder methodFinder) {
 
-        var getterOrMixinMain = processMethodContext.getMethod();
+        var getterOrMixinMain = processMethodContext.methodFacade();
         var getterType = getterOrMixinMain.getReturnType();
 
         methodFinder
-        .streamMethodsMatchingSignature(STRING_ARG)
-        .peek(processMethodContext::removeMethod)
-        .forEach(autoCompleteMethod->{
-            addFacet(
-                    new PropertyAutoCompleteFacetMethod(
-                            autoCompleteMethod, getterType, processMethodContext.getFacetHolder()));
-        });
+	        .streamMethodsMatchingSignature(STRING_ARG)
+	        .peek(processMethodContext::removeMethod)
+	        .forEach(autoCompleteMethod->
+                new PropertyAutoCompleteFacetMethod(
+                        autoCompleteMethod, getterType, processMethodContext.facetHolder()));
 
     }
 

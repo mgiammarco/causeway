@@ -18,6 +18,7 @@
  */
 package org.apache.causeway.core.metamodel.services.metamodel;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -26,15 +27,6 @@ import java.util.TreeSet;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import jakarta.inject.Named;
-import jakarta.inject.Provider;
-
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
 
 import org.apache.causeway.applib.Identifier;
 import org.apache.causeway.applib.id.LogicalType;
@@ -51,10 +43,8 @@ import org.apache.causeway.applib.services.metamodel.MetaModelService;
 import org.apache.causeway.applib.services.metamodel.objgraph.ObjectGraph;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.commons.internal.base._Strings;
-import org.apache.causeway.commons.internal.collections._Lists;
 import org.apache.causeway.commons.internal.exceptions._Exceptions;
 import org.apache.causeway.core.metamodel.CausewayModuleCoreMetamodel;
-import org.apache.causeway.core.metamodel.facetapi.FacetUtil;
 import org.apache.causeway.core.metamodel.facets.collections.layout.columnorder.ColumnOrderPatchingFacet;
 import org.apache.causeway.core.metamodel.facets.members.publish.command.CommandPublishingFacet;
 import org.apache.causeway.core.metamodel.object.ManagedObject;
@@ -71,6 +61,13 @@ import org.apache.causeway.core.metamodel.spec.feature.OneToManyAssociation;
 import org.apache.causeway.core.metamodel.spec.feature.OneToOneAssociation;
 import org.apache.causeway.core.metamodel.specloader.SpecificationLoader;
 import org.apache.causeway.schema.metamodel.v2.MetamodelDto;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import jakarta.inject.Named;
+import jakarta.inject.Provider;
 
 /**
  * Default implementation of {@link MetaModelService}.
@@ -101,7 +98,7 @@ public record MetaModelServiceDefault(
         specificationLoader().specForLogicalType(logicalType)
                 .ifPresent(objectSpecification -> {
                     logicalTypes.add(logicalType);
-                    objectSpecification.getAliases().stream().forEach(logicalTypes::add);
+                    objectSpecification.aliases().stream().forEach(logicalTypes::add);
                 });
         return Can.ofCollection(logicalTypes);
     }
@@ -130,7 +127,7 @@ public record MetaModelServiceDefault(
 
         var specifications = specificationLoader().snapshotSpecifications();
 
-        final List<DomainMember> rows = _Lists.newArrayList();
+        final List<DomainMember> rows = new ArrayList<>();
         for (final ObjectSpecification spec : specifications) {
             if (exclude(spec)) {
                 continue;
@@ -171,7 +168,7 @@ public record MetaModelServiceDefault(
     }
 
     protected boolean isBuiltIn(final ObjectSpecification spec) {
-        final String className = spec.getFullIdentifier();
+        final String className = spec.fullIdentifier();
         return className.startsWith("java");
     }
 
@@ -184,15 +181,15 @@ public record MetaModelServiceDefault(
         if(objectSpec == null)
 			return BeanSort.UNKNOWN;
 
-        if(objectSpec.getBeanSort().isUnknown()
+        if(objectSpec.beanSort().isUnknown()
                 && !(mode == Mode.RELAXED))
 			throw new IllegalArgumentException(String.format(
                     "Unable to determine what sort of domain object this is: '%s'. Originating domainType: '%s'",
-                    objectSpec.getFullIdentifier(),
+                    objectSpec.fullIdentifier(),
                     domainType.getName()
                     ));
 
-        return objectSpec.getBeanSort();
+        return objectSpec.beanSort();
 
     }
 
@@ -203,15 +200,15 @@ public record MetaModelServiceDefault(
 
         final Class<?> domainType = switch (mode) {
         case RELAXED -> specificationLoader().specForBookmark(bookmark)
-                        .map(ObjectSpecification::getCorrespondingClass)
+                        .map(ObjectSpecification::correspondingClass)
                         .orElse(null);
         case STRICT -> specificationLoader().specForBookmark(bookmark)
-                        .map(ObjectSpecification::getCorrespondingClass)
+                        .map(ObjectSpecification::correspondingClass)
                         .orElseThrow(()->_Exceptions
                                 .noSuchElement("Cannot resolve logical type name %s to a java class",
                                         bookmark.logicalTypeName()));
         default -> specificationLoader().specForBookmark(bookmark)
-                        .map(ObjectSpecification::getCorrespondingClass)
+                        .map(ObjectSpecification::correspondingClass)
                         .orElseThrow(()->_Exceptions
                                 .noSuchElement("Cannot resolve logical type name %s to a java class",
                                         bookmark.logicalTypeName()));
@@ -231,7 +228,7 @@ public record MetaModelServiceDefault(
         final ObjectSpecification spec = specificationLoader().specForLogicalTypeName(logicalTypeName).orElse(null);
         if(spec == null)
 			return null;
-        final ObjectMember objectMemberIfAny = spec.getMember(featureId.getLogicalMemberName()).orElse(null);
+        final ObjectMember objectMemberIfAny = spec.lookupMember(featureId.getLogicalMemberName()).orElse(null);
         if (objectMemberIfAny == null)
 			return null;
         final CommandPublishingFacet commandPublishingFacet = objectMemberIfAny.lookupFacet(CommandPublishingFacet.class)
@@ -247,7 +244,7 @@ public record MetaModelServiceDefault(
         /*TODO[CAUSEWAY-3206] refactor: ideally config would provide the list, but unfortunately
          * MetaModelAnnotator type is not know to Config, which lives in applib.
          */
-        var metaModelAnnotators = _Lists.<MetaModelAnnotator>newArrayList();
+        var metaModelAnnotators = new ArrayList<MetaModelAnnotator>();
         if(config.isIncludeTitleAnnotations()) {
             metaModelAnnotators.add(new TitleAnnotator(new ExporterConfig(){}));
         }
@@ -263,7 +260,7 @@ public record MetaModelServiceDefault(
         var objectSpecs = specificationLoader()
                 .snapshotSpecifications()
                 .stream()
-                .filter(spec->filter.test(spec.getBeanSort(), spec.logicalType()))
+                .filter(spec->filter.test(spec.beanSort(), spec.logicalType()))
                 .collect(Collectors.toList());
         return ObjectGraph
                 .create(new _ObjectGraphFactory(objectSpecs));
@@ -302,7 +299,7 @@ public record MetaModelServiceDefault(
             .specForType(domainType)
             .stream()
             .flatMap(ObjectSpecification::streamTypeHierarchyAndInterfaces)
-            .filter(spec->!spec.getCorrespondingClass().equals(Object.class))
+            .filter(spec->!spec.correspondingClass().equals(Object.class))
             .map(ObjectSpecification::getFeatureIdentifier);
     }
 
@@ -327,7 +324,7 @@ public record MetaModelServiceDefault(
 			return Stream.empty();
 
         return elementType
-            .streamAssociationsForColumnRendering(new ColumnQuery(collectionId, parentMo, columnQueryMode))
+            .streamAssociationsForColumnRendering(new ColumnQuery(collectionId, parentMo.objSpec().correspondingClass(), columnQueryMode))
             .map(ObjectAssociation::getFeatureIdentifier);
     }
 
@@ -364,7 +361,7 @@ public record MetaModelServiceDefault(
 		};
 
 		var columnOrderPatchingFacet = elementType.lookupFacet(ColumnOrderPatchingFacet.class)
-			.orElseGet(()->FacetUtil.addFacet(new ColumnOrderPatchingFacet(elementType)));
+			.orElseGet(()->new ColumnOrderPatchingFacet(elementType));
 
 		columnOrderPatchingFacet.putColumnOrder(identifier, columnsInOrder);
 	}

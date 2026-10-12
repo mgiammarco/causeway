@@ -22,7 +22,6 @@ import org.apache.causeway.commons.collections.ImmutableEnumSet;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facets.FacetFactoryAbstract;
-
 import org.springframework.data.annotation.Persistent;
 
 class JdbcEntityFacetFactory extends FacetFactoryAbstract {
@@ -33,14 +32,14 @@ class JdbcEntityFacetFactory extends FacetFactoryAbstract {
 
     @Override
     public void process(final ProcessClassContext processClassContext) {
-        var cls = processClassContext.getCls();
+        var cls = processClassContext.cls();
 
-        var facetHolder = processClassContext.getFacetHolder();
+        var facetHolder = processClassContext.facetHolder();
 
         var entityAnnotation = processClassContext.synthesizeOnType(Persistent.class);
-        if(!entityAnnotation.isPresent()) return;
+        if(!entityAnnotation.isPresent())
+        	return;
 
-        addFacet(
-                new JdbcEntityFacet(facetHolder, cls));
+        new JdbcEntityFacet(facetHolder, cls);
     }
 }

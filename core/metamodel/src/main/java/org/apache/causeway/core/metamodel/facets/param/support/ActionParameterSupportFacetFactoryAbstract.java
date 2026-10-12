@@ -23,15 +23,14 @@ import java.util.function.UnaryOperator;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.config.progmodel.ProgrammingModelConstants.MemberSupportPrefix;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethodParameter;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
-import org.apache.causeway.core.metamodel.facets.FacetedMethodParameter;
 import org.apache.causeway.core.metamodel.facets.ParameterSupport;
 import org.apache.causeway.core.metamodel.facets.ParameterSupport.ParamSupportingMethodSearchRequest;
 import org.apache.causeway.core.metamodel.facets.ParameterSupport.ParamSupportingMethodSearchRequest.ParamSupportingMethodSearchRequestBuilder;
 import org.apache.causeway.core.metamodel.facets.ParameterSupport.ParamSupportingMethodSearchResult;
 import org.apache.causeway.core.metamodel.facets.ParameterSupport.SearchAlgorithm;
 import org.apache.causeway.core.metamodel.facets.members.support.MemberAndPropertySupportFacetFactoryAbstract;
-
 import org.jspecify.annotations.NonNull;
 
 public abstract class ActionParameterSupportFacetFactoryAbstract
@@ -56,7 +55,7 @@ extends MemberAndPropertySupportFacetFactoryAbstract {
 
     @Override
     public final void process(final ProcessMethodContext processMethodContext) {
-        var facetedMethod = processMethodContext.getFacetHolder();
+        var facetedMethod = processMethodContext.facetHolder();
         var parameters = facetedMethod.parameters();
 
         if (parameters.isEmpty()) return;

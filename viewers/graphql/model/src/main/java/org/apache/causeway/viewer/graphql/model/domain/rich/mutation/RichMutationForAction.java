@@ -19,8 +19,6 @@
 package org.apache.causeway.viewer.graphql.model.domain.rich.mutation;
 
 import java.util.ArrayList;
-import java.util.Map;
-import java.util.Optional;
 
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.GraphQLArgument;
@@ -34,7 +32,6 @@ import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
 import org.jspecify.annotations.Nullable;
 
 import org.apache.causeway.applib.annotation.Where;
-import org.apache.causeway.applib.services.bookmark.Bookmark;
 import org.apache.causeway.commons.collections.Can;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
 import org.apache.causeway.core.metamodel.facets.actcoll.typeof.TypeOfFacet;
@@ -53,7 +50,6 @@ import org.apache.causeway.viewer.graphql.model.domain.common.query.ObjectFeatur
 import org.apache.causeway.viewer.graphql.model.domain.rich.query.RichAction;
 import org.apache.causeway.viewer.graphql.model.exceptions.DisabledException;
 import org.apache.causeway.viewer.graphql.model.exceptions.HiddenException;
-import org.apache.causeway.viewer.graphql.model.fetcher.BookmarkedPojo;
 import org.apache.causeway.viewer.graphql.model.types.TypeMapper;
 
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +61,7 @@ public class RichMutationForAction extends Element {
 
     private final ObjectSpecification objectSpec;
     private final ObjectAction objectAction;
-    private String argumentName;
+    private final String argumentName;
 
     public RichMutationForAction(
             final ObjectSpecification objectSpec,
@@ -98,11 +94,11 @@ public class RichMutationForAction extends Element {
     @Nullable
     private GraphQLOutputType typeFor(final ObjectAction objectAction){
         ObjectSpecification objectSpecification = objectAction.getReturnType();
-        switch (objectSpecification.getBeanSort()){
+        switch (objectSpecification.beanSort()){
 
             case COLLECTION:
 
-                TypeOfFacet facet = objectAction.getFacet(TypeOfFacet.class);
+                TypeOfFacet facet = objectAction.lookupFacet(TypeOfFacet.class).orElse(null);
                 if (facet == null) {
                     log.warn("Unable to locate TypeOfFacet for {}", objectAction.getFeatureIdentifier().getFullIdentityString());
                     return null;
@@ -111,7 +107,7 @@ public class RichMutationForAction extends Element {
                 GraphQLType wrappedType = context.typeMapper.outputTypeFor(objectSpecificationOfCollectionElement, SCHEMA_TYPE);
                 if (wrappedType == null) {
                     log.warn("Unable to create wrapped type of for {} for action {}",
-                            objectSpecificationOfCollectionElement.getFullIdentifier(),
+                            objectSpecificationOfCollectionElement.fullIdentifier(),
                             objectAction.getFeatureIdentifier().getFullIdentityString());
                     return null;
                 }
@@ -129,63 +125,33 @@ public class RichMutationForAction extends Element {
     @Override
     protected Object fetchData(final DataFetchingEnvironment dataFetchingEnvironment) {
 
-        var isService = objectSpec.getBeanSort().isManagedBeanContributing();
+        var isService = objectSpec.beanSort().isManagedBeanContributing();
 
         var environment = new Environment.For(dataFetchingEnvironment);
         Object sourcePojo;
         if (isService) {
-            sourcePojo = context.serviceRegistry.lookupServiceElseFail(objectSpec.getCorrespondingClass());
+            sourcePojo = context.serviceRegistry.lookupServiceElseFail(objectSpec.correspondingClass());
         } else {
-            Object target = dataFetchingEnvironment.getArgument(argumentName);
-            Optional<Object> result;
-            var argumentValue = (Map<String, ?>) target;
-            String idValue = (String)argumentValue.get("id");
-            if (idValue != null) {
-                var objectSpecArg = (ObjectSpecification)argumentValue.get("logicalTypeName");
-                Optional<Bookmark> bookmarkIfAny;
-                if (objectSpecArg != null) {
-                    bookmarkIfAny = Optional.of(Bookmark.forLogicalTypeNameAndIdentifier(objectSpecArg.logicalTypeName(), idValue));
-                } else {
-                    Class<?> paramClass = objectSpec.getCorrespondingClass();
-                    bookmarkIfAny = context.bookmarkService.bookmarkFor(paramClass, idValue);
-                }
-                result = bookmarkIfAny
-                        .map(context.bookmarkService::lookup)
-                        .filter(Optional::isPresent)
-                        .map(Optional::get);
-            } else {
-                var refValue = (String)argumentValue.get("ref");
-                if (refValue != null) {
-                    String key = ObjectFeatureUtils.keyFor(refValue);
-                    BookmarkedPojo value = environment.getGraphQlContext().get(key);
-                    result = Optional.of(value).map(BookmarkedPojo::getTargetPojo);
-                } else {
-                    throw new IllegalArgumentException("Either 'id' or 'ref' must be specified for a DomainObject input type");
-                }
-            }
-            sourcePojo = result
-                    .orElseThrow(); // TODO: better error handling if no such object found.
+            var target = dataFetchingEnvironment.getArgument(argumentName);
+            sourcePojo = ObjectFeatureUtils.requirePojo(objectSpec, target, environment, context);
         }
 
         ManagedObject managedObject = ManagedObject.adaptSingular(objectSpec, sourcePojo);
 
         var visibleConsent = objectAction.isVisible(managedObject, InteractionInitiatedBy.USER, Where.ANYWHERE);
-        if (visibleConsent.isVetoed()) {
-            throw new HiddenException(objectAction.getFeatureIdentifier());
-        }
+        if (visibleConsent.isVetoed())
+			throw new HiddenException(objectAction.getFeatureIdentifier());
 
         var usableConsent = objectAction.isUsable(managedObject, InteractionInitiatedBy.USER, Where.ANYWHERE);
-        if (usableConsent.isVetoed()) {
-            throw new DisabledException(objectAction.getFeatureIdentifier());
-        }
+        if (usableConsent.isVetoed())
+			throw new DisabledException(objectAction.getFeatureIdentifier());
 
         var head = objectAction.interactionHead(managedObject);
         var argumentManagedObjects = argumentManagedObjectsFor(environment, objectAction);
 
         var validityConsent = objectAction.isArgumentSetValid(head, argumentManagedObjects, InteractionInitiatedBy.USER);
-        if (validityConsent.isVetoed()) {
-            throw new IllegalArgumentException(validityConsent.getReasonAsString().orElse("Invalid"));
-        }
+        if (validityConsent.isVetoed())
+			throw new IllegalArgumentException(validityConsent.reasonAsString().orElse("Invalid"));
 
         var resultManagedObject = objectAction.execute(head, argumentManagedObjects, InteractionInitiatedBy.USER);
         return resultManagedObject.getPojo();
@@ -198,7 +164,7 @@ public class RichMutationForAction extends Element {
         var argName = context.causewayConfiguration.viewer().graphql().mutation().targetArgName();
 
         // add target (if not a service)
-        if (! objectSpec.getBeanSort().isManagedBeanContributing()) {
+        if (! objectSpec.beanSort().isManagedBeanContributing()) {
             arguments.add(
                     GraphQLArgument.newArgument()
                             .name(argName)

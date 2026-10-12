@@ -41,11 +41,17 @@ implements TitleFacet {
     }
 
     private TitleFacetFromValueFacet(final ValueFacet<?> valueFacet, final FacetHolder holder) {
-        // facets from the title() method have higher precedence
-        super(TitleFacet.class, holder, Precedence.LOW);
+        super(TitleFacet.class, holder);
         this.valueFacet = valueFacet;
     }
 
+    @Override
+    public Precedence precedence() {
+    	// facets from the title() method have higher precedence
+    	return Precedence.LOW;
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public String title(final TitleRenderRequest renderRequest) {
         if (renderRequest == null) return null;
@@ -57,9 +63,8 @@ implements TitleFacet {
          * and alternatively object-support method 'title()',
          * by letting the SpecificationLoader introspect enum types and populate the meta-model
          * with TitleFacets (that have higher priority than this one). */
-        if(renderRequest.object().objSpec().getCorrespondingClass().isEnum()) {
-            return Enums.getFriendlyNameOf((Enum<?>)pojo);
-        }
+        if(renderRequest.object().objSpec().correspondingClass().isEnum())
+			return Enums.getFriendlyNameOf((Enum<?>)pojo);
 
         var featureId = facetHolder().getFeatureIdentifier();
         var feature = getSpecificationLoader().loadFeature(featureId).orElse(null);
@@ -67,12 +72,12 @@ implements TitleFacet {
         // support for qualified value semantics, requires a 'where' context, that is,
         // what property, collection, action return or action param this is to be rendered for ...
         if(feature!=null) {
-            switch(feature.getFeatureType()) {
+            switch(feature.featureType()) {
             case PROPERTY:
             case COLLECTION:
             case ACTION_PARAMETER_SINGULAR:
             case ACTION_PARAMETER_PLURAL: {
-                final Renderer renderer = valueFacet
+				final Renderer renderer = valueFacet
                         .selectRendererForParamOrPropOrCollOrElseFallback(feature);
                 return renderer
                         .titlePresentation(valueFacet
@@ -89,7 +94,7 @@ implements TitleFacet {
             .map(renderer->(Renderer) renderer)
             .map(renderer->renderer.titlePresentation(valueFacet.createValueSemanticsContext(feature), pojo))
             .orElseGet(()->String.format("Value type %s has no value semantics for title rendering.",
-                    renderRequest.object().objSpec().getCorrespondingClass()));
+                    renderRequest.object().objSpec().correspondingClass()));
 
     }
 

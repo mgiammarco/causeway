@@ -21,10 +21,6 @@ package org.apache.causeway.core.metamodel.facets.object.ignore.annotation;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import jakarta.inject.Inject;
-
-import org.jspecify.annotations.NonNull;
-
 import org.apache.causeway.commons.internal.functions._Predicates;
 import org.apache.causeway.commons.internal.reflection._ClassCache.Attribute;
 import org.apache.causeway.commons.internal.reflection._GenericResolver.ResolvedMethod;
@@ -33,6 +29,9 @@ import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facets.FacetFactoryAbstract;
 import org.apache.causeway.core.metamodel.spec.ObjectSpecification;
+import org.jspecify.annotations.NonNull;
+
+import jakarta.inject.Inject;
 
 public class RemoveAnnotatedMethodsFacetFactory
 extends FacetFactoryAbstract {
@@ -44,9 +43,9 @@ extends FacetFactoryAbstract {
 
     @Override
     public void process(final ProcessClassContext processClassContext) {
-        switch (processClassContext.getIntrospectionPolicy()) {
+        switch (processClassContext.introspectionPolicy()) {
             case ENCAPSULATION_ENABLED -> getClassCache()
-                .streamResolvedMethods(processClassContext.getCls())
+                .streamResolvedMethods(processClassContext.cls())
                 /* honor exclude markers (always) */
                 .filter(filterAndRemoveExclusions(processClassContext))
                 /* don't throw away mixin main methods,
@@ -54,7 +53,7 @@ extends FacetFactoryAbstract {
                 .filter(_Predicates.not(isMixinMainMethod(processClassContext)))
                 .forEach(removeNonInclusions(processClassContext));
             case ANNOTATION_REQUIRED -> getClassCache()
-                .streamPublicMethods(processClassContext.getCls())
+                .streamPublicMethods(processClassContext.cls())
                 /* honor exclude markers (always) */
                 .filter(filterAndRemoveExclusions(processClassContext))
                 /* don't throw away mixin main methods,
@@ -62,7 +61,7 @@ extends FacetFactoryAbstract {
                 .filter(_Predicates.not(isMixinMainMethod(processClassContext)))
                 .forEach(removeNonInclusions(processClassContext));
             case ANNOTATION_OPTIONAL -> getClassCache()
-                .streamPublicMethods(processClassContext.getCls())
+                .streamPublicMethods(processClassContext.cls())
                 .forEach(removeExclusions(processClassContext));
             }
     }
@@ -101,13 +100,13 @@ extends FacetFactoryAbstract {
     private Predicate<ResolvedMethod> isMixinMainMethod(final @NonNull ProcessClassContext processClassContext) {
 
         // shortcut, when we already know the class is not a mixin
-        if(processClassContext.getFacetHolder() instanceof ObjectSpecification) {
-            var spec = (ObjectSpecification) processClassContext.getFacetHolder();
-            if(!spec.getBeanSort().isMixin())
+        if(processClassContext.facetHolder() instanceof ObjectSpecification) {
+            var spec = (ObjectSpecification) processClassContext.facetHolder();
+            if(!spec.beanSort().isMixin())
                 return method->false;
         }
         // lookup attribute from class-cache as it should have been already processed by the BeanTypeClassifier
-        var cls = processClassContext.getCls();
+        var cls = processClassContext.cls();
         var mixinMainMethodName = getClassCache().head(cls).getAttribute(Attribute.MIXIN_MAIN_METHOD_NAME)
                 .orElse(null);
         return method->method.name().equals(mixinMainMethodName);

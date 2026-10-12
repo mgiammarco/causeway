@@ -20,8 +20,6 @@ package org.apache.causeway.core.metamodel.facets.object.domainobjectlayout;
 
 import java.util.Optional;
 
-import org.jspecify.annotations.Nullable;
-
 import org.apache.causeway.applib.layout.component.DomainObjectLayoutData;
 import org.apache.causeway.core.metamodel.facetapi.Facet;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
@@ -29,9 +27,7 @@ import org.apache.causeway.core.metamodel.facetapi.QualifiedFacet;
 import org.apache.causeway.core.metamodel.facets.all.i8n.noun.Noun;
 import org.apache.causeway.core.metamodel.facets.all.named.ObjectNamedFacet;
 import org.apache.causeway.core.metamodel.facets.all.named.ObjectNamedFacetAbstract;
-
-import lombok.Getter;
-import lombok.experimental.Accessors;
+import org.jspecify.annotations.Nullable;
 
 public class ObjectNamedFacetForDomainObjectLayoutXml
 extends ObjectNamedFacetAbstract
@@ -47,19 +43,16 @@ implements QualifiedFacet {
         var noun = new Noun(domainObjectLayout.getNamed());
         return noun.isEmpty()
             ? Optional.empty()
-            : Optional.of(new ObjectNamedFacetForDomainObjectLayoutXml(noun, holder, precedence, qualifier));
+            : Optional.of(new ObjectNamedFacetForDomainObjectLayoutXml(noun, holder) {
+            	@Override final public Precedence precedence() { return precedence; }
+           	 	@Override final public @Nullable String qualifier() { return qualifier; }
+            });
     }
-
-    @Getter(onMethod_ = @Override) @Accessors(fluent = true, makeFinal = true)
-    private final @Nullable String qualifier;
 
     private ObjectNamedFacetForDomainObjectLayoutXml(
             final Noun noun,
-            final FacetHolder holder,
-            final Facet.Precedence precedence,
-            final @Nullable String qualifier) {
-        super(noun, holder, precedence);
-        this.qualifier = qualifier;
+            final FacetHolder holder) {
+        super(noun, holder);
     }
 
     @Override

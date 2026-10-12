@@ -20,15 +20,11 @@ package org.apache.causeway.core.metamodel.facets.members.layout.group;
 
 import java.util.Optional;
 
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
-
 import org.apache.causeway.applib.layout.component.FieldSet;
 import org.apache.causeway.core.metamodel.facetapi.FacetHolder;
 import org.apache.causeway.core.metamodel.facetapi.QualifiedFacet;
-
-import lombok.Getter;
-import lombok.experimental.Accessors;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public class LayoutGroupFacetForLayoutXml
 extends LayoutGroupFacetAbstract
@@ -42,7 +38,10 @@ implements QualifiedFacet {
             final Precedence precedence,
             final @Nullable String qualifier) {
         return Optional.ofNullable(groupIdAndName)
-                .map(gIdAndName->new LayoutGroupFacetForLayoutXml(gIdAndName, holder, precedence, qualifier));
+                .map(gIdAndName->new LayoutGroupFacetForLayoutXml(gIdAndName, holder) {
+                	@Override final public Precedence precedence() { return precedence; }
+                	@Override final public @Nullable String qualifier() { return qualifier; }
+                });
     }
 
     public static Optional<LayoutGroupFacetForLayoutXml> create(
@@ -57,16 +56,10 @@ implements QualifiedFacet {
 
     // --
 
-    @Getter(onMethod_ = @Override) @Accessors(fluent = true, makeFinal = true)
-    private final @Nullable String qualifier;
-
     private LayoutGroupFacetForLayoutXml(
             final GroupIdAndName groupIdAndName,
-            final FacetHolder holder,
-            final Precedence precedence,
-            final @Nullable String qualifier) {
-        super(groupIdAndName, holder, precedence);
-        this.qualifier = qualifier;
+            final FacetHolder holder) {
+        super(groupIdAndName, holder);
     }
 
     @Override

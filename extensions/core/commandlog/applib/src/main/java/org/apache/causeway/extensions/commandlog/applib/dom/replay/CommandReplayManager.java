@@ -45,6 +45,7 @@ import org.apache.causeway.applib.annotation.Publishing;
 import org.apache.causeway.applib.annotation.RestrictTo;
 import org.apache.causeway.applib.annotation.SemanticsOf;
 import org.apache.causeway.applib.jaxb.JavaSqlXMLGregorianCalendarMarshalling;
+import org.apache.causeway.applib.services.command.CommandRecordingSuppressed;
 import org.apache.causeway.applib.util.schema.CommandDtoUtils;
 import org.apache.causeway.applib.value.Blob;
 import org.apache.causeway.extensions.commandlog.applib.CausewayModuleExtCommandLogApplib;
@@ -60,7 +61,7 @@ public record CommandReplayManager(
         @Property
         @PropertyLayout(describedAs = "Only commands after this baseline are listed for replay")
         java.sql.Timestamp baseline,
-        ReplayContext replayContext) implements ViewModel {
+        ReplayContext replayContext) implements ViewModel, CommandRecordingSuppressed {
 
     public static final String LOGICAL_TYPE_NAME = CausewayModuleExtCommandLogApplib.NAMESPACE + ".CommandReplayManager";
 
@@ -155,8 +156,18 @@ public record CommandReplayManager(
                 final boolean moveBaselineToOldest) {
             var yamlDs = commandsYaml.asDataSource();
 
-            final List<CommandDto> commandDtos = CommandDtoUtils.fromYaml(yamlDs);
-            commandDtos.forEach(commandLogEntryRepository()::saveForReplay);
+            // strict decode: accepts the wrapped-export and legacy multi-document forms and fails (rather than
+            // silently importing nothing) on unparseable input, matching the unified importer.
+            final var imported = CommandDtoUtils.fromYamlForReplay(yamlDs);
+            final List<CommandDto> commandDtos = imported.stream()
+                    .map(CommandDtoUtils.ImportedCommandDto::getCommand)
+                    .toList();
+            imported.forEach(value -> {
+                final var entry = commandLogEntryRepository().saveForReplay(value.getCommand());
+                if (value.getResult() != null) {
+                    entry.setResult(value.getResult());
+                }
+            });
 
             return moveBaselineToOldest
                 ? oldestTimestamp(commandDtos)
@@ -206,17 +217,25 @@ public record CommandReplayManager(
     public class replayOrRetrySelected {
         public class DomainEvent extends ActionDomainEvent<replayOrRetrySelected> { }
         @MemberSupport public CommandReplayManager act(final List<ReplayableCommand> selected) {
+            if (ReplayPendingBackgroundCommands.hasPendingBackgroundCommands(replayContext)) {
+                return CommandReplayManager.this;
+            }
             var replayables = selected.stream()
                 .sorted()
                 .collect(Collectors.toList());
             for(var replayableCommand : replayables) {
                 var tryReplayOrRetry = replayableCommand.tryReplayOrRetry(); // filtered on its own responsibility
-                if(tryReplayOrRetry.isFailure())
+                if(tryReplayOrRetry.isFailure()
+                        || ReplayPendingBackgroundCommands.hasPendingBackgroundCommands(replayContext))
                     return CommandReplayManager.this; // stop further execution
             }
             return CommandReplayManager.this;
         }
         @MemberSupport public String disableAct() {
+            final var backgroundReason = ReplayPendingBackgroundCommands.disableReason(replayContext);
+            if (backgroundReason != null) {
+                return backgroundReason;
+            }
             return getPendingOrFailed().isEmpty() ? "No commands in collection" : null;
         }
         @MemberSupport public String validateSelected(final List<ReplayableCommand> selected) {
@@ -240,6 +259,9 @@ public record CommandReplayManager(
     public class replayOrRetryNext {
         public class DomainEvent extends ActionDomainEvent<replayOrRetrySelected> { }
         @MemberSupport public CommandReplayManager act() {
+            if (ReplayPendingBackgroundCommands.hasPendingBackgroundCommands(replayContext)) {
+                return CommandReplayManager.this;
+            }
             var nextIfAny = streamPendingOrFailed().findFirst();
             // should always be present, due to our guard
             nextIfAny.ifPresent(ReplayableCommand::tryReplayOrRetry);
@@ -248,6 +270,10 @@ public record CommandReplayManager(
 
         @MemberSupport
         public String disableAct() {
+            final var backgroundReason = ReplayPendingBackgroundCommands.disableReason(replayContext);
+            if (backgroundReason != null) {
+                return backgroundReason;
+            }
             return sizePendingOrFailed() == 0 ? "No commands in collection" : null;
         }
     }
@@ -319,10 +345,26 @@ public record CommandReplayManager(
                     + "or marked to be excluded from replay (replayState=EXCLUDE)")
     public List<ReplayableCommand> getSucceededOrExcluded() {
         return commandLogEntryRepository().findSinceAndWithReplayOkOrExcluded(baseline).stream()
+            .filter(entry -> ReplayableCommandEligibility.isEligible(
+                    entry, replayContext.applicationFeatureRepository()))
             .map(entry->new ReplayableCommand(
                     entry.getInteractionId(),
                     replayContext))
             .collect(Collectors.toList());
+    }
+
+    @Action(
+            semantics = SemanticsOf.SAFE,
+            commandPublishing = Publishing.DISABLED,
+            domainEvent = openCommandManager.DomainEvent.class,
+            executionPublishing = Publishing.DISABLED)
+    @ActionLayout(sequence = "3", named = "Open Command Manager")
+    public class openCommandManager {
+        public class DomainEvent extends ActionDomainEvent<openCommandManager> { }
+
+        @MemberSupport public CommandManager act() {
+            return new CommandManager(baseline, CommandManager.DEFAULT_LIMIT, replayContext);
+        }
     }
 
     @Action(

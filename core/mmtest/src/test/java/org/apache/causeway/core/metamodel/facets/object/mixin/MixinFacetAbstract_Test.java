@@ -18,10 +18,9 @@
  */
 package org.apache.causeway.core.metamodel.facets.object.mixin;
 
+import org.apache.causeway.commons.internal.reflection._GenericResolver;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import org.apache.causeway.commons.internal.reflection._GenericResolver;
 
 class MixinFacetAbstract_Test {
 
@@ -40,14 +39,36 @@ class MixinFacetAbstract_Test {
 
         // given
         var constructor = Collection_numberOfChildren.class.getConstructor(Object.class);
-        var facet = new MixinFacetAbstract(
-                Collection_numberOfChildren.class, "prop", constructor, null) {};
+        var facet = MixinFacetImpl.forTesting(
+                Collection_numberOfChildren.class, "prop", constructor);
 
         var propMethodInSubclass = _GenericResolver.testing
                 .resolveMethod(SimpleObject_numberOfChildren.class, "prop");
 
         // when
         var candidate = facet.isCandidateForMain(propMethodInSubclass);
+
+        // then
+        Assertions.assertThat(candidate).isTrue();
+    }
+
+    public record MixinAsRecord(
+    		SimpleObject mixee) {
+    	public int prop() { return 0; }
+    }
+
+    @Test
+    void mixinAsRecord() throws Exception {
+        // given
+        var constructor = MixinAsRecord.class.getConstructor(SimpleObject.class);
+        var facet = MixinFacetImpl.forTesting(
+        		MixinAsRecord.class, "prop", constructor);
+
+        var propMethod = _GenericResolver.testing
+                .resolveMethod(MixinAsRecord.class, "prop");
+
+        // when
+        var candidate = facet.isCandidateForMain(propMethod);
 
         // then
         Assertions.assertThat(candidate).isTrue();

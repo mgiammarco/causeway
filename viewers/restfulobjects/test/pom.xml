@@ -115,7 +115,7 @@
             <artifactId>spring-boot-actuator-autoconfigure</artifactId>
             <scope>test</scope>
         </dependency>
-        
+
 		<dependency>
 			<groupId>org.glassfish.jersey.core</groupId>
 			<artifactId>jersey-client</artifactId>

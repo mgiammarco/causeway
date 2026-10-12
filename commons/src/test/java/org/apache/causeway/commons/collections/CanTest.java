@@ -18,10 +18,19 @@
  */
 package org.apache.causeway.commons.collections;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiPredicate;
@@ -30,23 +39,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.apache.causeway.commons.internal.collections._Sets;
+import org.apache.causeway.commons.internal.testing._SerializationTester;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertIterableEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import org.springframework.util.StringUtils;
-
-import org.apache.causeway.commons.internal.base._NullSafe;
-import org.apache.causeway.commons.internal.collections._Sets;
-import org.apache.causeway.commons.internal.testing._SerializationTester;
 
 import lombok.RequiredArgsConstructor;
 
@@ -175,7 +174,7 @@ class CanTest {
     @Test
     void multiCan_toSet_should_find_duplicates() {
         var expectedSet = _Sets.of("a", "b", "c");
-        var duplicates = _Sets.<String>newHashSet();
+        var duplicates = new HashSet<String>();
 
         assertSetEquals(expectedSet, Can.<String>of("a", "c", "b", "a").toSet());
         assertSetEquals(expectedSet, Can.<String>of("a", "c", "b", "a").toSet(duplicates::add));
@@ -489,7 +488,9 @@ class CanTest {
         var expectedZipped = new ArrayList<String>();
         for (int i = 0; i < scenario.cardinality(); i++) {
             var next = CustomerScenario.format(scenario.customers.getElseFail(i), i);
-            if(next!=null) expectedZipped.add(next); // exclude nulls
+            if(next!=null) {
+				expectedZipped.add(next); // exclude nulls
+			}
         }
         { // zip
             var list = new ArrayList<String>();
@@ -500,7 +501,7 @@ class CanTest {
             assertIterableEquals(
                     expectedZipped,
                     //remove nulls
-                    list.stream().filter(_NullSafe::isPresent).collect(Collectors.toList()));
+                    list.stream().filter(Objects::nonNull).collect(Collectors.toList()));
         }
         { // zipMap
             var actualZipped = scenario.customers

@@ -16,7 +16,7 @@
         <mml:attr name="precedence" value="SYNTHESIZED"/>
         <mml:attr name="translated" value="Optional[Some View Model]"/>
       </mml:facet>
-      <mml:facet id="org.apache.causeway.core.metamodel.facets.object.bookmarkpolicy.BookmarkPolicyFacet" fqcn="org.apache.causeway.core.metamodel.facets.object.domainobjectlayout.BookmarkPolicyFacetForDomainObjectLayoutXml">
+      <mml:facet id="org.apache.causeway.core.metamodel.facets.object.bookmarkpolicy.BookmarkPolicyFacet">
         <mml:attr name="bookmarkPolicy" value="AS_ROOT"/>
         <mml:attr name="facet" value="BookmarkPolicyFacetForDomainObjectLayoutXml"/>
         <mml:attr name="precedence" value="LOW"/>
@@ -69,6 +69,11 @@
         <mml:attr name="interactionAdvisors" value="DisablingOrEnabling"/>
         <mml:attr name="precedence" value="DEFAULT"/>
         <mml:attr name="reason" value="Disabled via @DomainObject annotation, reason not given."/>
+      </mml:facet>
+      <mml:facet id="org.apache.causeway.core.metamodel.facets.object.locking.LockingFacet" fqcn="org.apache.causeway.core.metamodel.facets.object.domainobject.locking.LockingFacetForDomainObjectAnnotationAsConfigured">
+        <mml:attr name="facet" value="LockingFacetForDomainObjectAnnotationAsConfigured"/>
+        <mml:attr name="policy" value="OPTIMISTIC"/>
+        <mml:attr name="precedence" value="DEFAULT"/>
       </mml:facet>
       <mml:facet id="org.apache.causeway.core.metamodel.facets.object.objectvalidprops.ObjectValidPropertiesFacet" fqcn="org.apache.causeway.core.metamodel.facets.object.objectvalidprops.impl.ObjectValidPropertiesFacetImpl">
         <mml:attr name="facet" value="ObjectValidPropertiesFacetImpl"/>
@@ -127,7 +132,7 @@
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacet">
             <mml:attr name="contributing" value="AS_PROPERTY"/>
-            <mml:attr name="facet" value="ContributingFacetAbstract.2"/>
+            <mml:attr name="facet" value="ContributingFacetAbstract"/>
             <mml:attr name="precedence" value="DEFAULT"/>
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacet" fqcn="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacetFallback">
@@ -161,13 +166,13 @@
             <mml:attr name="semantics" value="DISABLED"/>
             <mml:attr name="where" value="ANYWHERE"/>
           </mml:facet>
-          <mml:facet id="org.apache.causeway.core.metamodel.facets.members.layout.group.LayoutGroupFacet" fqcn="org.apache.causeway.core.metamodel.facets.members.layout.group.LayoutGroupFacetForLayoutXml">
+          <mml:facet id="org.apache.causeway.core.metamodel.facets.members.layout.group.LayoutGroupFacet">
             <mml:attr name="facet" value="LayoutGroupFacetForLayoutXml"/>
             <mml:attr name="groupId" value="other"/>
             <mml:attr name="groupName" value="Other"/>
             <mml:attr name="precedence" value="LOW"/>
           </mml:facet>
-          <mml:facet id="org.apache.causeway.core.metamodel.facets.members.layout.order.LayoutOrderFacet" fqcn="org.apache.causeway.core.metamodel.facets.members.layout.order.LayoutOrderFacetForLayoutXml">
+          <mml:facet id="org.apache.causeway.core.metamodel.facets.members.layout.order.LayoutOrderFacet">
             <mml:attr name="facet" value="LayoutOrderFacetForLayoutXml"/>
             <mml:attr name="precedence" value="LOW"/>
             <mml:attr name="sequence" value="1"/>
@@ -242,7 +247,7 @@
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacet">
             <mml:attr name="contributing" value="AS_ACTION"/>
-            <mml:attr name="facet" value="ContributingFacetAbstract.1"/>
+            <mml:attr name="facet" value="ContributingFacetAbstract"/>
             <mml:attr name="precedence" value="DEFAULT"/>
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacet" fqcn="org.apache.causeway.core.metamodel.facets.actions.layout.ActionPositionFacetForActionLayoutAnnotation">
@@ -399,7 +404,7 @@
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacet">
             <mml:attr name="contributing" value="AS_ACTION"/>
-            <mml:attr name="facet" value="ContributingFacetAbstract.1"/>
+            <mml:attr name="facet" value="ContributingFacetAbstract"/>
             <mml:attr name="precedence" value="DEFAULT"/>
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacet" fqcn="org.apache.causeway.core.metamodel.facets.actions.layout.ActionPositionFacetForActionLayoutAnnotation">
@@ -660,7 +665,7 @@
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacet">
             <mml:attr name="contributing" value="AS_ACTION"/>
-            <mml:attr name="facet" value="ContributingFacetAbstract.1"/>
+            <mml:attr name="facet" value="ContributingFacetAbstract"/>
             <mml:attr name="precedence" value="DEFAULT"/>
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacet" fqcn="org.apache.causeway.core.metamodel.facets.actions.layout.ActionPositionFacetForActionLayoutAnnotation">
@@ -824,7 +829,7 @@
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacet">
             <mml:attr name="contributing" value="AS_ACTION"/>
-            <mml:attr name="facet" value="ContributingFacetAbstract.1"/>
+            <mml:attr name="facet" value="ContributingFacetAbstract"/>
             <mml:attr name="precedence" value="DEFAULT"/>
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacet" fqcn="org.apache.causeway.core.metamodel.facets.actions.layout.ActionPositionFacetForActionLayoutAnnotation">
@@ -935,7 +940,7 @@
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacet">
             <mml:attr name="contributing" value="AS_ACTION"/>
-            <mml:attr name="facet" value="ContributingFacetAbstract.1"/>
+            <mml:attr name="facet" value="ContributingFacetAbstract"/>
             <mml:attr name="precedence" value="DEFAULT"/>
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacet" fqcn="org.apache.causeway.core.metamodel.facets.actions.layout.ActionPositionFacetForActionLayoutAnnotation">
@@ -1046,7 +1051,7 @@
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacet">
             <mml:attr name="contributing" value="AS_ACTION"/>
-            <mml:attr name="facet" value="ContributingFacetAbstract.1"/>
+            <mml:attr name="facet" value="ContributingFacetAbstract"/>
             <mml:attr name="precedence" value="DEFAULT"/>
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacet" fqcn="org.apache.causeway.core.metamodel.facets.actions.layout.ActionPositionFacetForActionLayoutAnnotation">
@@ -1263,7 +1268,7 @@
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacet">
             <mml:attr name="contributing" value="AS_ACTION"/>
-            <mml:attr name="facet" value="ContributingFacetAbstract.1"/>
+            <mml:attr name="facet" value="ContributingFacetAbstract"/>
             <mml:attr name="precedence" value="DEFAULT"/>
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacet" fqcn="org.apache.causeway.core.metamodel.facets.actions.layout.ActionPositionFacetForActionLayoutAnnotation">
@@ -1421,7 +1426,7 @@
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacet">
             <mml:attr name="contributing" value="AS_ACTION"/>
-            <mml:attr name="facet" value="ContributingFacetAbstract.1"/>
+            <mml:attr name="facet" value="ContributingFacetAbstract"/>
             <mml:attr name="precedence" value="DEFAULT"/>
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacet" fqcn="org.apache.causeway.core.metamodel.facets.actions.layout.ActionPositionFacetForActionLayoutAnnotation">
@@ -1571,11 +1576,16 @@
         <mml:attr name="precedence" value="DEFAULT"/>
         <mml:attr name="reason" value="Disabled via @DomainObject annotation, reason not given."/>
       </mml:facet>
-      <mml:facet id="org.apache.causeway.core.metamodel.facets.object.mixin.MixinFacet" fqcn="org.apache.causeway.core.metamodel.facets.object.mixin.MixinFacetForDomainObjectAnnotation">
+      <mml:facet id="org.apache.causeway.core.metamodel.facets.object.locking.LockingFacet" fqcn="org.apache.causeway.core.metamodel.facets.object.domainobject.locking.LockingFacetForDomainObjectAnnotationAsConfigured">
+        <mml:attr name="facet" value="LockingFacetForDomainObjectAnnotationAsConfigured"/>
+        <mml:attr name="policy" value="OPTIMISTIC"/>
+        <mml:attr name="precedence" value="DEFAULT"/>
+      </mml:facet>
+      <mml:facet id="org.apache.causeway.core.metamodel.facets.object.mixin.MixinFacet" fqcn="org.apache.causeway.core.metamodel.facets.object.mixin.MixinFacetImpl">
         <mml:attr name="contributing" value="AS_PROPERTY"/>
-        <mml:attr name="facet" value="MixinFacetForDomainObjectAnnotation"/>
-        <mml:attr name="holderType" value="org.apache.causeway.extensions.pdfjs.metamodel.domains.mixin.SomeViewModel"/>
+        <mml:attr name="facet" value="MixinFacetImpl"/>
         <mml:attr name="mainMethodName" value="prop"/>
+        <mml:attr name="mixeeType" value="org.apache.causeway.extensions.pdfjs.metamodel.domains.mixin.SomeViewModel"/>
         <mml:attr name="mixinType" value="org.apache.causeway.extensions.pdfjs.metamodel.domains.mixin.SomeViewModel_pdf"/>
         <mml:attr name="precedence" value="DEFAULT"/>
       </mml:facet>
@@ -1634,7 +1644,7 @@
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.contributing.ContributingFacet">
             <mml:attr name="contributing" value="AS_PROPERTY"/>
-            <mml:attr name="facet" value="ContributingFacetAbstract.2"/>
+            <mml:attr name="facet" value="ContributingFacetAbstract"/>
             <mml:attr name="precedence" value="DEFAULT"/>
           </mml:facet>
           <mml:facet id="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacet" fqcn="org.apache.causeway.core.metamodel.facets.actions.position.ActionPositionFacetFallback">

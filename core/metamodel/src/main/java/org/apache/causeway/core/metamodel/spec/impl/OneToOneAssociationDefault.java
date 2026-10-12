@@ -31,8 +31,8 @@ import org.apache.causeway.commons.internal.exceptions._Exceptions;
 import org.apache.causeway.core.metamodel.commons.ToString;
 import org.apache.causeway.core.metamodel.consent.Consent;
 import org.apache.causeway.core.metamodel.consent.InteractionInitiatedBy;
+import org.apache.causeway.core.metamodel.facetapi.FacetedMethod;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
-import org.apache.causeway.core.metamodel.facets.FacetedMethod;
 import org.apache.causeway.core.metamodel.facets.objectvalue.mandatory.MandatoryFacet;
 import org.apache.causeway.core.metamodel.facets.param.autocomplete.MinLengthUtil;
 import org.apache.causeway.core.metamodel.facets.propcoll.accessor.PropertyOrCollectionAccessorFacet;
@@ -69,7 +69,7 @@ implements OneToOneAssociation, Serializable {
                 facetedMethod.getFeatureIdentifier(),
                 facetedMethod,
                 ((SpecificationLoaderInternal)facetedMethod.getMetaModelContext().getSpecificationLoader())
-                    .loadSpecification(facetedMethod.resolvedType().elementType()));
+                    .loadSpecificationTypeOnly(facetedMethod.resolvedType().elementType()));
     }
 
     // -- CONSTRUCTION
@@ -139,7 +139,7 @@ implements OneToOneAssociation, Serializable {
             final ManagedObject ownerAdapter,
             final ManagedObject referencedAdapter) {
 
-        final PropertyInitializationFacet initializerFacet = getFacet(PropertyInitializationFacet.class);
+        final PropertyInitializationFacet initializerFacet = lookupFacet(PropertyInitializationFacet.class).orElse(null);
         if (initializerFacet != null) {
             initializerFacet.initProperty(ownerAdapter, referencedAdapter);
         }
@@ -152,15 +152,14 @@ implements OneToOneAssociation, Serializable {
             final ManagedObject ownerAdapter,
             final InteractionInitiatedBy interactionInitiatedBy) {
 
-        var propertyOrCollectionAccessorFacet = getFacet(PropertyOrCollectionAccessorFacet.class);
+        var propertyOrCollectionAccessorFacet = lookupFacet(PropertyOrCollectionAccessorFacet.class).orElseThrow();
         var referencedPojo =
                 propertyOrCollectionAccessorFacet.getAssociationValueAsPojo(ownerAdapter, interactionInitiatedBy);
 
-        if (referencedPojo == null) {
-            // TODO: perhaps this should instead return ManagedObject.empty(getSpecification()) ?
+        if (referencedPojo == null)
+			// TODO: perhaps this should instead return ManagedObject.empty(getSpecification()) ?
             //  however, that's a far-reaching change to make.
             return null;
-        }
 
         return getObjectManager().adapt(referencedPojo);
     }
@@ -193,11 +192,10 @@ implements OneToOneAssociation, Serializable {
             setupCommand(InteractionHead.regular(ownerAdapter), newValue);
         }
 
-        if (ManagedObjects.isNullOrUnspecifiedOrEmpty(newValue)) {
-            return clearValue(ownerAdapter, interactionInitiatedBy);
-        } else {
-            return setValue(ownerAdapter, newValue, interactionInitiatedBy);
-        }
+        if (ManagedObjects.isNullOrUnspecifiedOrEmpty(newValue))
+			return clearValue(ownerAdapter, interactionInitiatedBy);
+		else
+			return setValue(ownerAdapter, newValue, interactionInitiatedBy);
     }
 
     private ManagedObject setValue(
@@ -205,10 +203,9 @@ implements OneToOneAssociation, Serializable {
             final ManagedObject newReferencedAdapter,
             final InteractionInitiatedBy interactionInitiatedBy) {
 
-        var propertySetterFacet = getFacet(PropertySetterFacet.class);
-        if (propertySetterFacet == null) {
-            throw _Exceptions.unexpectedCodeReach();
-        }
+        var propertySetterFacet = lookupFacet(PropertySetterFacet.class).orElse(null);
+        if (propertySetterFacet == null)
+			throw _Exceptions.unexpectedCodeReach();
 
         MmEntityUtils.requiresWhenFirstIsBookmarkableSecondIsAlso(ownerAdapter, newReferencedAdapter);
 
@@ -219,11 +216,10 @@ implements OneToOneAssociation, Serializable {
             final ManagedObject ownerAdapter,
             final InteractionInitiatedBy interactionInitiatedBy) {
 
-        var propertyClearFacet = getFacet(PropertySetterFacet.class);
+        var propertyClearFacet = lookupFacet(PropertySetterFacet.class).orElse(null);
 
-        if (propertyClearFacet == null) {
-            throw _Exceptions.unexpectedCodeReach();
-        }
+        if (propertyClearFacet == null)
+			throw _Exceptions.unexpectedCodeReach();
 
         return propertyClearFacet.clearProperty(this, ownerAdapter, interactionInitiatedBy);
     }
@@ -238,20 +234,18 @@ implements OneToOneAssociation, Serializable {
         // specification (eg an int should
         // default to 0).
         if (propertyDefaultFacet == null) {
-            propertyDefaultFacet = this.getElementType().getFacet(PropertyDefaultFacet.class);
+            propertyDefaultFacet = this.getElementType().lookupFacet(PropertyDefaultFacet.class).orElse(null);
         }
-        if (propertyDefaultFacet == null) {
-            return null;
-        }
+        if (propertyDefaultFacet == null)
+			return null;
         return propertyDefaultFacet.getDefault(ownerAdapter);
     }
 
     @Override
     public void toDefault(final ManagedObject ownerAdapter) {
         // default only mandatory fields
-        if (!MandatoryFacet.isMandatory(this)) {
-            return;
-        }
+        if (!MandatoryFacet.isMandatory(this))
+			return;
 
         final ManagedObject defaultValue = getDefault(ownerAdapter);
         if (defaultValue != null) {
@@ -263,7 +257,7 @@ implements OneToOneAssociation, Serializable {
 
     @Override
     public boolean hasChoices() {
-        return getFacet(PropertyChoicesFacet.class) != null;
+        return containsFacet(PropertyChoicesFacet.class);
     }
 
     @Override
@@ -271,10 +265,9 @@ implements OneToOneAssociation, Serializable {
             final ManagedObject ownerAdapter,
             final InteractionInitiatedBy interactionInitiatedBy) {
 
-        var propertyChoicesFacet = getFacet(PropertyChoicesFacet.class);
-        if (propertyChoicesFacet == null) {
-            return Can.empty();
-        }
+        var propertyChoicesFacet = lookupFacet(PropertyChoicesFacet.class).orElse(null);
+        if (propertyChoicesFacet == null)
+			return Can.empty();
 
         return propertyChoicesFacet.getChoices(
                 ownerAdapter,
@@ -283,7 +276,7 @@ implements OneToOneAssociation, Serializable {
 
     @Override
     public boolean hasAutoComplete() {
-        final PropertyAutoCompleteFacet propertyAutoCompleteFacet = getFacet(PropertyAutoCompleteFacet.class);
+        final PropertyAutoCompleteFacet propertyAutoCompleteFacet = lookupFacet(PropertyAutoCompleteFacet.class).orElse(null);
         return propertyAutoCompleteFacet != null;
     }
 
@@ -293,7 +286,7 @@ implements OneToOneAssociation, Serializable {
             final String searchArg,
             final InteractionInitiatedBy interactionInitiatedBy) {
 
-        final PropertyAutoCompleteFacet propertyAutoCompleteFacet = getFacet(PropertyAutoCompleteFacet.class);
+        final PropertyAutoCompleteFacet propertyAutoCompleteFacet = lookupFacet(PropertyAutoCompleteFacet.class).orElse(null);
         final Object[] pojoOptions = propertyAutoCompleteFacet
                 .autoComplete(ownerAdapter, searchArg, interactionInitiatedBy);
 
@@ -305,8 +298,10 @@ implements OneToOneAssociation, Serializable {
 
     @Override
     public int getAutoCompleteMinLength() {
-        final PropertyAutoCompleteFacet propertyAutoCompleteFacet = getFacet(PropertyAutoCompleteFacet.class);
-        return propertyAutoCompleteFacet != null? propertyAutoCompleteFacet.getMinLength(): MinLengthUtil.MIN_LENGTH_DEFAULT;
+        final PropertyAutoCompleteFacet propertyAutoCompleteFacet = lookupFacet(PropertyAutoCompleteFacet.class).orElse(null);
+        return propertyAutoCompleteFacet != null
+        		? propertyAutoCompleteFacet.getMinLength()
+				: MinLengthUtil.MIN_LENGTH_DEFAULT;
     }
 
     /**
@@ -332,7 +327,7 @@ implements OneToOneAssociation, Serializable {
         str.append(super.toString());
         str.setAddComma();
         str.append("persisted", isIncludedWithSnapshots());
-        str.append("type", getElementType().getShortIdentifier());
+        str.append("type", getElementType().shortIdentifier());
         return str.toString();
     }
 

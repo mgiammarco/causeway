@@ -21,9 +21,6 @@ package org.apache.causeway.core.metamodel.specloader;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
-
 import org.apache.causeway.applib.Identifier;
 import org.apache.causeway.applib.id.LogicalType;
 import org.apache.causeway.applib.services.bookmark.Bookmark;
@@ -38,6 +35,8 @@ import org.apache.causeway.core.metamodel.spec.feature.ObjectFeature;
 import org.apache.causeway.core.metamodel.specloader.validator.MetaModelValidator;
 import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailure;
 import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailures;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Builds the meta-model, utilizing an instance of {@link ProgrammingModel}
@@ -170,7 +169,7 @@ public interface SpecificationLoader {
         var typeSpec = specForLogicalType(featureIdentifier.logicalType()).orElse(null);
         if(typeSpec==null)
             return Optional.empty();
-        var member = typeSpec.getMember(featureIdentifier.memberLogicalName()).orElse(null);
+        var member = typeSpec.lookupMember(featureIdentifier.memberLogicalName()).orElse(null);
         if(member==null)
             return Optional.empty();
 
@@ -190,9 +189,8 @@ public interface SpecificationLoader {
 
     boolean isMetamodelFullyIntrospected();
 
-    // -- CAUTION! (use only during meta-model initialization)
-
-    //TODO[causeway-core-metamodel-CAUSEWAY-3834] remove from this interface
     @Nullable ObjectSpecification loadSpecification(@Nullable Class<?> domainType);
+
+	boolean contains(@Nullable Class<?> cls);
 
 }

@@ -20,12 +20,7 @@ package org.apache.causeway.persistence.jpa.metamodel.facets.prop.column;
 
 import java.util.Optional;
 
-import jakarta.inject.Inject;
-import jakarta.persistence.Column;
-import jakarta.persistence.JoinColumn;
-
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
-import org.apache.causeway.core.metamodel.facetapi.FacetUtil;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
 import org.apache.causeway.core.metamodel.facetapi.MetaModelRefiner;
 import org.apache.causeway.core.metamodel.facets.FacetFactoryAbstract;
@@ -33,6 +28,10 @@ import org.apache.causeway.core.metamodel.facets.objectvalue.mandatory.Mandatory
 import org.apache.causeway.core.metamodel.progmodel.ProgrammingModel;
 import org.apache.causeway.core.metamodel.spec.feature.MixedIn;
 import org.apache.causeway.persistence.commons.metamodel.facets.prop.column.MandatoryFromXxxColumnAnnotationMetaModelRefinerUtil;
+
+import jakarta.inject.Inject;
+import jakarta.persistence.Column;
+import jakarta.persistence.JoinColumn;
 
 public class MandatoryFromJpaColumnAnnotationFacetFactory
 extends FacetFactoryAbstract
@@ -45,7 +44,6 @@ implements MetaModelRefiner {
 
     @Override
     public void process(final ProcessMethodContext processMethodContext) {
-
         final Optional<Boolean> nullable1 = processMethodContext.synthesizeOnMethod(JoinColumn.class)
                 .map(JoinColumn::nullable);
 
@@ -53,26 +51,22 @@ implements MetaModelRefiner {
                 .map(Column::nullable);
 
         if(!nullable1.isPresent()
-                && !nullable2.isPresent()) {
-            return;
-        }
+                && !nullable2.isPresent())
+			return;
 
         var nullable = nullable1.orElseGet(nullable2::get);
         var semantics = Semantics.required(!nullable);
 
-        var facetHolder = processMethodContext.getFacetHolder();
-        FacetUtil.addFacet(
-                new MandatoryFacetFromJpaColumnAnnotation(semantics, facetHolder));
+        var facetHolder = processMethodContext.facetHolder();
+        new MandatoryFacetFromJpaColumnAnnotation(semantics, facetHolder);
     }
 
     @Override
     public void refineProgrammingModel(final ProgrammingModel programmingModel) {
         programmingModel.addValidatorSkipManagedBeans(objectSpec->{
-
             objectSpec
                     .streamProperties(MixedIn.EXCLUDED)
                     .forEach(MandatoryFromXxxColumnAnnotationMetaModelRefinerUtil::validateMandatoryFacet);
-
         });
     }
 

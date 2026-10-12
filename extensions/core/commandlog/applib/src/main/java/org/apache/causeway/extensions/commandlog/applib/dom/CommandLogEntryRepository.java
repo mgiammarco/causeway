@@ -121,6 +121,14 @@ public interface CommandLogEntryRepository {
      */
     List<CommandLogEntry> findSince(UUID interactionId, Integer batchSize);
 
+    default List<CommandLogEntry> findForegroundSinceTimestamp(final Timestamp since) {
+        return findForegroundSinceTimestamp(since, null);
+    }
+
+    List<CommandLogEntry> findForegroundSinceTimestamp(Timestamp since, @Nullable Integer limitIfAny);
+
+    List<CommandLogEntry> findForegroundBeforeTimestamp(Timestamp before, @Nullable Integer limitIfAny);
+
     List<CommandLogEntry> findForegroundSinceTimestampAndCanBeExported(Timestamp since);
 
     List<CommandLogEntry> findForegroundSinceTimestampAndHasBeenExported(Timestamp since);
@@ -129,6 +137,10 @@ public interface CommandLogEntryRepository {
      * Command Replay feature: Can replay or retry.
      */
     List<CommandLogEntry> findForegroundSinceTimestampAndWithReplayPendingOrFailed(Timestamp since);
+
+    List<CommandLogEntry> findForegroundSinceTimestampAndWithReplayExcluded(Timestamp since);
+
+    List<CommandLogEntry> findForegroundSinceTimestampAndWithReplayRecordedOrReplayed(Timestamp since);
 
     /**
      * Command Replay feature: Cannot replay or retry.

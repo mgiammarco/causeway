@@ -18,6 +18,7 @@
  */
 package org.apache.causeway.core.metamodel.services.classsubstitutor;
 
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -27,8 +28,8 @@ import org.apache.causeway.commons.internal.proxy.ProxyFactoryService;
 import org.apache.causeway.commons.internal.reflection._ClassCache;
 import org.apache.causeway.core.config.progmodel.ProgrammingModelConstants;
 import org.apache.causeway.core.metamodel.commons.ClassUtil;
-
 import org.jspecify.annotations.NonNull;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -39,45 +40,36 @@ public abstract class ClassSubstitutorAbstract implements ClassSubstitutor {
     @Override
     public final Substitution getSubstitution(final @NonNull Class<?> cls) {
         var replacement = getReplacement(cls);
-        if(Objects.equals(cls, replacement)) {
-            return Substitution.passThrough(); // indifferent
-        }
-        if(replacement==null) {
-            return Substitution.neverIntrospect();
-        }
+        if(Objects.equals(cls, replacement))
+			return Substitution.passThrough(); // indifferent
+        if(replacement==null)
+			return Substitution.neverIntrospect();
         return Substitution.replaceWith(replacement) ;
     }
 
     protected Class<?> getReplacement(final Class<?> cls) {
-
-        if(cls == null) {
-            return null;
-        }
+        if(cls == null)
+			return null;
 
         if(proxyPackageNamesToSkip.stream()
-                .anyMatch(packageName -> cls.getName().startsWith(packageName))) {
-            return getReplacement(cls.getSuperclass());
-        }
+                .anyMatch(packageName -> cls.getName().startsWith(packageName)))
+			return getReplacement(cls.getSuperclass());
 
-        if (shouldIgnore(cls)) {
-            return null;
-        }
+        if (shouldIgnore(cls))
+			return null;
 
         // primarily to ignore unit test fixtures if they happen to be on the classpath.
         // (we can't simply ignore them; for example ApplicationFeatureType enum
         // uses anonymous inner classes and these *are* part of the metamodel)
-        if(cls.isAnonymousClass()) {
-            return cls.getSuperclass();
-        }
+        if(cls.isAnonymousClass())
+			return cls.getSuperclass();
 
         final Class<?> superclass = cls.getSuperclass();
-        if(superclass != null && superclass.isEnum()) {
-            return superclass;
-        }
-        if (ClassUtil.directlyImplements(cls, ProxyFactoryService.ProxyEnhanced.class)) {
-            // REVIEW: arguably this should now go back to the ClassSubstitorRegistry
+        if(superclass != null && superclass.isEnum())
+			return superclass;
+        if (ClassUtil.directlyImplements(cls, ProxyFactoryService.ProxyEnhanced.class))
+			// REVIEW: arguably this should now go back to the ClassSubstitorRegistry
             return getReplacement(cls.getSuperclass());
-        }
 
         try {
             // guard against cannot introspect
@@ -98,9 +90,9 @@ public abstract class ClassSubstitutorAbstract implements ClassSubstitutor {
     // -- HELPERS
 
     private final Set<Class<?>> classesToIgnore = _Sets.newConcurrentHashSet();
-    private final Set<String> classNamesToIgnore = _Sets.newHashSet();
-    private final Set<String> packageNamesToIgnore = _Sets.newHashSet();
-    private final Set<String> proxyPackageNamesToSkip = _Sets.newHashSet();
+    private final Set<String> classNamesToIgnore = new HashSet<>();
+    private final Set<String> packageNamesToIgnore = new HashSet<>();
+    private final Set<String> proxyPackageNamesToSkip = new HashSet<>();
 
     /**
      * For any classes registered as ignored, {@link #getReplacement(Class)} will
@@ -123,14 +115,12 @@ public abstract class ClassSubstitutorAbstract implements ClassSubstitutor {
     }
 
     private boolean shouldIgnore(final Class<?> cls) {
-        if (cls.isArray()) {
-            return shouldIgnore(cls.getComponentType());
-        }
+        if (cls.isArray())
+			return shouldIgnore(cls.getComponentType());
 
         // ignore vetoed types
-        if(ProgrammingModelConstants.TypeVetoMarker.anyMatchOn(cls)) {
-            return true;
-        }
+        if(ProgrammingModelConstants.TypeVetoMarker.anyMatchOn(cls))
+			return true;
 
         var className = cls.getName();
 
@@ -142,11 +132,10 @@ public abstract class ClassSubstitutorAbstract implements ClassSubstitutor {
         } catch(NoClassDefFoundError e) {
 
             try{
-                if(cls.isAnonymousClass()) {
-                    return shouldIgnore(cls.getSuperclass());
-                } else {
-                    return false;
-                }
+                if(cls.isAnonymousClass())
+					return shouldIgnore(cls.getSuperclass());
+				else
+					return false;
             } catch(NoClassDefFoundError ex) {
                 return true;
             }

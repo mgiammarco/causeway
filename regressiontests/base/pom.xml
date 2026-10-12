@@ -113,7 +113,7 @@
 			<artifactId>causeway-viewer-wicket-viewer</artifactId>
 			<optional>true</optional>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>org.apache.wicket</groupId>
 			<artifactId>wicket-tester</artifactId>

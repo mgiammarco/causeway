@@ -37,7 +37,7 @@ extends MetaModelValidatorAbstract {
 
     @Inject
     public ActionAnnotationShouldEnforceConcreteTypeToBeIncludedWithMetamodelValidator(final MetaModelContext mmc) {
-        super(mmc, spec->spec.getBeanSort() == BeanSort.UNKNOWN
+        super(mmc, spec->spec.beanSort() == BeanSort.UNKNOWN
                 && !spec.isAbstract());
     }
 
@@ -58,7 +58,7 @@ extends MetaModelValidatorAbstract {
                     spec,
                     ProgrammingModelConstants.MessageTemplate.UNKNONW_SORT_WITH_ACTION
                         .builder()
-                        .addVariable("type", spec.getCorrespondingClass().getName())
+                        .addVariable("type", spec.correspondingClass().getName())
                         .addVariable("actions", actionIds)
                         .addVariable("actionCount", numActions)
                         .buildMessage());

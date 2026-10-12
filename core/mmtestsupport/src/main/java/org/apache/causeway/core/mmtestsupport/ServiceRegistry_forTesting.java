@@ -19,7 +19,10 @@
 package org.apache.causeway.core.mmtestsupport;
 
 import java.lang.annotation.Annotation;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,16 +35,15 @@ import org.apache.causeway.commons.internal.assertions._Assert;
 import org.apache.causeway.commons.internal.base._Casts;
 import org.apache.causeway.commons.internal.base._NullSafe;
 import org.apache.causeway.commons.internal.base._Strings;
-import org.apache.causeway.commons.internal.collections._Maps;
-import org.apache.causeway.commons.internal.collections._Sets;
 import org.apache.causeway.commons.internal.context._Context;
 import org.apache.causeway.commons.internal.exceptions._Exceptions;
-import org.apache.causeway.commons.internal.ioc.SpringContextHolder;
 import org.apache.causeway.commons.internal.ioc.SingletonBeanProvider;
+import org.apache.causeway.commons.internal.ioc.SpringContextHolder;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
+import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import lombok.Getter;
-import org.jspecify.annotations.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
@@ -51,19 +53,23 @@ class ServiceRegistry_forTesting implements ServiceRegistry {
     @NonNull private final MetaModelContext metaModelContext;
 
     @Getter @Setter private SpringContextHolder iocContainer;
-    private final Set<SingletonBeanProvider> registeredBeans = _Sets.newHashSet();
+    private final Set<SingletonBeanProvider> registeredBeans = new HashSet<>();
 
     @Override
     public <T> Can<T> select(final Class<T> type, final Annotation[] qualifiers) {
 
         if(iocContainer!=null) {
-            return iocContainer.select(type, qualifiers);
-        }
-
+			iocContainer.select(type, _NullSafe.stream(qualifiers)
+            		.map(annot->annot instanceof Qualifier qualifier
+            				? qualifier : null)
+            		.filter(Objects::nonNull)
+            		.findFirst()
+            		.orElse(null));
 // ignore
 //        if(qualifiers!=null && qualifiers.length>0) {
 //            throw _Exceptions.notImplemented();
 //        }
+		}
 
         Optional<T> match = streamBeans()
                 .filter(SingletonBeanProvider.satisfying(type))
@@ -71,21 +77,19 @@ class ServiceRegistry_forTesting implements ServiceRegistry {
                 .map(_Casts::<T>uncheckedCast)
                 .findFirst();
 
-        if(match.isPresent()) {
-            return Can.ofSingleton(match.get());
-        }
+        if(match.isPresent())
+			return Can.ofSingleton(match.get());
 
         // lookup the _Context
         // XXX lombok bug, cannot use var here (https://github.com/rzwitserloot/lombok/issues/1588)
         T singleton = _Context.getIfAny(type);
-        if(singleton!=null) {
-            return Can.ofSingleton(singleton);
-        }
+        if(singleton!=null)
+			return Can.ofSingleton(singleton);
 
         return Can.empty();
     }
 
-    private final Map<String, SingletonBeanProvider> registeredBeanById = _Maps.newHashMap();
+    private final Map<String, SingletonBeanProvider> registeredBeanById = new HashMap<>();
 
     @Override
     public Stream<SingletonBeanProvider> streamRegisteredBeans() {
@@ -118,7 +122,7 @@ class ServiceRegistry_forTesting implements ServiceRegistry {
         synchronized(registeredBeans) {
             if(registeredBeans.isEmpty()) {
                 streamBeans()
-                .filter(_NullSafe::isPresent)
+                .filter(Objects::nonNull)
                 .peek(bean->_Assert.assertTrue(_Strings.isNotEmpty(bean.id())))
                 .forEach(bean->{
                     registeredBeans.add(bean);
@@ -138,26 +142,22 @@ class ServiceRegistry_forTesting implements ServiceRegistry {
     private Stream<SingletonBeanProvider> streamBeans() {
         // lookup the MetaModelContextBean's list of singletons
         var mmc = metaModelContext;
-        if(mmc instanceof MetaModelContext_forTesting) {
-            var mmcb = (MetaModelContext_forTesting) mmc;
-            return mmcb.streamBeanAdapters();
-        }
+        if(mmc instanceof MetaModelContext_forTesting mmcb)
+			return mmcb.streamBeanAdapters();
         return Stream.empty();
     }
 
     @Override
     public void clearRegisteredBeans() {
         var mmc = metaModelContext;
-        if(mmc instanceof MetaModelContext_forTesting) {
-            var mmcb = (MetaModelContext_forTesting) mmc;
+        if(mmc instanceof MetaModelContext_forTesting mmcb) {
             mmcb.clearRegisteredBeans();
         }
     }
 
     private void postinitWhenTesting() {
         var mmc = metaModelContext;
-        if(mmc instanceof MetaModelContext_forTesting) {
-            var mmcb = (MetaModelContext_forTesting) mmc;
+        if(mmc instanceof MetaModelContext_forTesting mmcb) {
             mmcb.runPostconstruct();
         }
     }

@@ -20,8 +20,6 @@ package org.apache.causeway.core.metamodel.facets.object.bookmarkpolicy.bookmark
 
 import java.util.function.Predicate;
 
-import jakarta.inject.Inject;
-
 import org.apache.causeway.applib.annotation.BookmarkPolicy;
 import org.apache.causeway.core.metamodel.context.MetaModelContext;
 import org.apache.causeway.core.metamodel.facetapi.FeatureType;
@@ -35,6 +33,8 @@ import org.apache.causeway.core.metamodel.spec.feature.MixedIn;
 import org.apache.causeway.core.metamodel.spec.feature.ObjectAction;
 import org.apache.causeway.core.metamodel.specloader.validator.ValidationFailure;
 
+import jakarta.inject.Inject;
+
 public class BookmarkPolicyFacetFallbackFactory
 extends FacetFactoryAbstract
 implements MetaModelRefiner {
@@ -46,12 +46,12 @@ implements MetaModelRefiner {
 
     @Override
     public void process(final ProcessClassContext processClassContext) {
-        addFacet(new BookmarkPolicyFacetFallback(processClassContext.getFacetHolder()));
+        new BookmarkPolicyFacetFallback(processClassContext.facetHolder());
     }
 
     @Override
     public void process(final ProcessMethodContext processMethodContext) {
-        addFacet(new BookmarkPolicyFacetFallback(processMethodContext.getFacetHolder()));
+        new BookmarkPolicyFacetFallback(processMethodContext.facetHolder());
     }
 
     /**
@@ -59,7 +59,6 @@ implements MetaModelRefiner {
      */
     @Override
     public void refineProgrammingModel(final ProgrammingModel programmingModel) {
-
         programmingModel.addValidatorSkipManagedBeans(objectSpec -> {
 
             // as an optimization only checking 'declared' members (skipping inherited ones)
@@ -67,7 +66,7 @@ implements MetaModelRefiner {
             objectSpec.streamDeclaredActions(MixedIn.EXCLUDED)
             .filter(isBookmarkable())
             .forEach(objectAction->{
-                var actionSemanticsFacet = objectAction.getFacet(ActionSemanticsFacet.class);
+                var actionSemanticsFacet = objectAction.lookupFacet(ActionSemanticsFacet.class).orElse(null);
                 if(actionSemanticsFacet == null
                         || actionSemanticsFacet.precedence().isFallback()
                         || !actionSemanticsFacet.value().isSafeInNature()) {
@@ -87,12 +86,11 @@ implements MetaModelRefiner {
 
     private static Predicate<ObjectAction> isBookmarkable() {
         return objectAction->{
-            var bookmarkPolicyFacet = objectAction.getFacet(BookmarkPolicyFacet.class);
+            var bookmarkPolicyFacet = objectAction.lookupFacet(BookmarkPolicyFacet.class).orElse(null);
             if(bookmarkPolicyFacet == null
                     || bookmarkPolicyFacet.precedence().isFallback()
-                    || bookmarkPolicyFacet.value() == BookmarkPolicy.NEVER) {
-                return false;
-            }
+                    || bookmarkPolicyFacet.value() == BookmarkPolicy.NEVER)
+				return false;
             return true;
         };
     }

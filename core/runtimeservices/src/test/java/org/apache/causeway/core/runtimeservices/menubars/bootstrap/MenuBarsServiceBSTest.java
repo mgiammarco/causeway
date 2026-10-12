@@ -18,20 +18,13 @@
  */
 package org.apache.causeway.core.runtimeservices.menubars.bootstrap;
 
-import java.nio.charset.StandardCharsets;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.EnumSource.Mode;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.springframework.boot.test.util.TestPropertyValues;
-import org.springframework.core.io.ByteArrayResource;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.causeway.applib.services.layout.LayoutService;
 import org.apache.causeway.applib.services.menu.MenuBarsMarshallerService;
@@ -41,6 +34,12 @@ import org.apache.causeway.core.metamodel.facetapi.Facet.Precedence;
 import org.apache.causeway.core.metamodel.facets.all.named.MemberNamedFacet;
 import org.apache.causeway.core.mmtestsupport.MetaModelContext_forTesting.MetaModelContext_forTestingBuilder;
 import org.apache.causeway.core.runtimeservices.RuntimeServicesTestAbstract;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
+import org.springframework.boot.test.util.TestPropertyValues;
+import org.springframework.core.io.ByteArrayResource;
 
 class MenuBarsServiceBSTest
 extends RuntimeServicesTestAbstract {
@@ -77,7 +76,7 @@ extends RuntimeServicesTestAbstract {
                 .anyMatch(bean->bean.beanClass().equals(Bar.class)));
 
         assertTrue(getMetaModelContext().streamServiceAdapters()
-                .anyMatch(domainObject->domainObject.objSpec().getCorrespondingClass().equals(Bar.class)));
+                .anyMatch(domainObject->domainObject.objSpec().correspondingClass().equals(Bar.class)));
     }
 
     @Test
@@ -109,6 +108,22 @@ extends RuntimeServicesTestAbstract {
         var layoutData2 = menuBars2.stream().findFirst().get();
         assertEquals("Create Simple Object", layoutData2.getNamed());
         assertEquals(null, layoutData2.getNamedEscaped()); // deprecated: always escape
+    }
+
+    @Test
+    void authoredLayoutWithoutUnreferencedActionMenuIsRetained() {
+        var customNamed = "Deliberately selected action";
+        var xml = sampleMenuBarsXmlWithCustomName(customNamed)
+                .replace(" unreferencedActions=\"true\"", "");
+        assertFalse(xml.contains("unreferencedActions=\"true\""));
+
+        getSpecificationLoader().disposeMetaModel();
+        super.menubarsLayoutXmlResourceRef.set(new ByteArrayResource(xml.getBytes(StandardCharsets.UTF_8)));
+        getSpecificationLoader().createMetaModel();
+
+        var menuBars = menuBarsService.menuBars();
+        assertEquals(1L, menuBars.stream().count());
+        assertEquals(customNamed, menuBars.stream().findFirst().orElseThrow().getNamed());
     }
 
     @Test
@@ -149,7 +164,7 @@ extends RuntimeServicesTestAbstract {
 
         assertEquals(customNamed, objectAction.getStaticFriendlyName().orElse(null));
 
-        var facetRanking = objectAction.getFacetRanking(MemberNamedFacet.class).orElse(null);
+        var facetRanking = objectAction.lookupFacetRanking(MemberNamedFacet.class).orElse(null);
         assertNotNull(facetRanking);
 
         // XML layout facets are installed at precedence HIGH
