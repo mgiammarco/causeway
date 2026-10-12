@@ -303,7 +303,7 @@ public class ObjectViewVaa extends VerticalLayout {
             }
 
             private boolean isBlobOrClob(final ManagedProperty managedProperty) {
-                var correspondingClass = managedProperty.getElementType().getCorrespondingClass();
+                var correspondingClass = managedProperty.getElementType().correspondingClass();
                 return Blob.class.equals(correspondingClass) || Clob.class.equals(correspondingClass);
             }
 

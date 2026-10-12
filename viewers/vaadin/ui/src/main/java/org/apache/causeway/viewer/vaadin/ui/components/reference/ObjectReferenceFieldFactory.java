@@ -66,7 +66,7 @@ public class ObjectReferenceFieldFactory implements UiComponentHandlerVaa {
         var readOnly = request.disablingUiModelIfAny().isPresent();
 
         var items = new ArrayList<ManagedObject>();
-        for (var pojo : repositoryService.allInstances(spec.getCorrespondingClass())) {
+        for (var pojo : repositoryService.allInstances(spec.correspondingClass())) {
             items.add(ManagedObject.adaptSingular(spec, pojo));
         }
 
